@@ -1,0 +1,112 @@
+# Local Variables:
+# eval: (progn (org-babel-goto-named-src-block "starting_block") (org-babel-execute-src-block) (outline-hide-sublevels 1))
+# End:
+#+PROPERTY: header-args:ipython :eval never
+#+OPTIONS: <<:nil
+#+TITLE: Learning union of k-testable languages
+#+subtitle: Statistical and symbolic language modeling project
+#+AUTHOR: Rania el Bouhssini, Martin Laville and Félix Jamet
+
+* Emacs stuff :noexport:
+
+This modification of =org-babel-exp-code= includes the name of named code blocks in the export.
+
+#+name: starting_block
+#+BEGIN_SRC emacs-lisp :results silent
+(setq-local org-babel-exp-code-template
+            "#+BEGIN_SRC %lang%switches%flags\n%body\n#+END_SRC")
+
+(defun my/org-babel-exp-code (info type)
+  "Return the original code block formatted for export."
+  (setf (nth 1 info)
+	(if (string= "strip-export" (cdr (assq :noweb (nth 2 info))))
+	    (replace-regexp-in-string
+	     (org-babel-noweb-wrap) "" (nth 1 info))
+	  (if (org-babel-noweb-p (nth 2 info) :export)
+	      (org-babel-expand-noweb-references
+	       info org-babel-exp-reference-buffer)
+	    (nth 1 info))))
+  (concat (if (nth 4 info)
+              (concat "\n=" (nth 4 info) "=:\n")
+            )
+          (org-fill-template
+           (if (eq type 'inline)
+               org-babel-exp-inline-code-template
+             org-babel-exp-code-template)
+           `(("lang"  . ,(nth 0 info))
+             ("body"  . ,(org-escape-code-in-string (nth 1 info)))
+             ("switches" . ,(let ((f (nth 3 info)))
+        	              (and (org-string-nw-p f) (concat " " f))))
+             ("flags" . ,(let ((f (assq :flags (nth 2 info))))
+        	           (and f (concat " " (cdr f)))))
+             ,@(mapcar (lambda (pair)
+        	         (cons (substring (symbol-name (car pair)) 1)
+        	               (format "%S" (cdr pair))))
+                       (nth 2 info))
+             ("name"  . ,(or (nth 4 info) ""))))))
+
+(advice-add 'org-babel-exp-code :override
+            #'my/org-babel-exp-code)
+#+END_SRC
+
+
+* Introduction
+
+Unless explicitely specified, all definitions and algorithms in this document are coming from Linard et al. [1].
+
+We will present a possible implementation of those definitions and algorithms in a modular fashion, using Python3.
+Modular meaning here that we will implement concepts as they come and assemble them later as a whole when the necessary parts are complete.
+So if an src_python[:exports code]{__init__} appears in the wild without its enclosing src_python[:exports code]{class}, it's nothing to worry about.
+
+* k-test vector
+
+A k-testable language can be described using a k-test vector which is a $4-tuple$ $Z = \langle I, F, T, C \rangle$ :
+ - $I \in \Sigma^{k-1}$ is a set of allowed prefixes,
+ - $F \in \Sigma^{k-1}$ is a set of allowed suffixes,
+ - $T \in \Sigma^k$ is a set of allowed segments, and
+ - $C \in \Sigma^{<k}$ is a set of allowed short strings satisfying $I \cap F = C \cap \Sigma^{k-1}$.
+
+We will refer to $I$, $F$, $T$, $C$ respectively as the allowed prefixes, suffixes, infixes and short strings. An intuitive way to formulate the constraint on short strings is that the short strings of length $k-1$ have to be both prefixes and suffixes and vice versa.
+
+This definition can be translated into an init.
+
+#+name: Init k-test vector
+#+BEGIN_SRC ipython
+def __init__(self, prefixes, suffixes, infixes, shorts):
+    self.k = len(prefixes[0]) + 1
+    self.prefixes = prefixes
+    self.suffixes = suffixes
+    self.infixes = infixes
+    self.shorts = shorts
+    self.ensure_correct_definition()
+#+END_SRC
+
+We then write =ensure_correct_definition= to make sure that the created k-test vector respects the conditions of the definition.
+
+#+name: Ensure correct definition
+#+BEGIN_SRC ipython
+def ensure_correct_definition(self):
+    def same_length(collection, reference_length):
+        return all(filter(lambda x: len(x) == reference_length, collection))
+
+    errors = []
+    if not same_length(self.prefixes, self.k - 1):
+        errors.append("Incorrect prefix length.")
+    if not same_length(self.suffixes, self.k - 1):
+        errors.append("Incorrect suffix length.")
+    if not same_length(self.infixes, self.k):
+        errors.append("Incorrect infix length.")
+    if not all(filter(lambda x: len(x) < self.k, self.shorts)):
+        errors.append("Incorrect short string length.")
+    presufixes = self.prefixes & self.suffixes
+    shorts_len_k = set(filter(lambda x: len(x) == self.k - 1))
+    if presufixes != shorts_len_k:
+        errors.append("Short strings conditions not satisfied.")
+
+    if len(errors) >0:
+        raise ValueError(' '.join(errors))
+#+END_SRC
+
+* Sources
+
+ 1. Linard, A., de la Higuera C., Vaandrager F.:Learning Unions of k-Testable Languages (http://www.sws.cs.ru.nl/publications/papers/fvaan/kTestable/main.pdf)
