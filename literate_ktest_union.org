@@ -109,6 +109,42 @@ def ensure_correct_definition(self):
         raise ValueError(', '.join(errors).capitalize() + '.')
 #+END_SRC
 
+** \(k\)-test vectors as a partially ordered set
+
+Let $\mathcal{T}_k$ be the set of all \(k\)-test vectors.
+A partial order $\sqsubseteq$ can be defined on $\mathcal{T}_k$ as follow:
+\begin{equation*}
+  \langle I, F, T, C \rangle \sqsubseteq \langle I', F', T', C' \rangle
+  \iff
+  I \subseteq I' \land F \subseteq F' \land T \subseteq T' \land C \subseteq C'
+\end{equation*}
+
+With this partial order, a union, an intersection and a symmetric difference can be defined on the \(k\)-test vectors $Z = \langle I, F, T, C \rangle$ and $Z' = \langle I', F', T', C' \rangle$.
+
+
+*** Union $\sqcup$
+
+\begin{equation*}
+Z \sqcup Z' = \langle I \cup I', F \cup F', T \cup T', C \cup C' \cup (I \cap F') \cup (I' \cap F) \rangle
+\end{equation*}
+
+We can see that the constraint on short strings $I \cap F = C \cap \Sigma^{k-1}$ is still respected because the short strings are updated with all the cases which could contradict it.
+
+The implementation is a quite litteral translation.
+
+#+name: K-test vector union
+#+BEGIN_SRC ipython
+def union(self, other):
+    prefixes = self.prefixes | other.prefixes
+    suffixes = self.suffixes | other.suffixes
+    infixes = self.infixes | other.infixes
+    shorts = self.shorts | other.shorts |\
+        (self.prefixes & other.suffixes) |\
+        (self.suffixes & other.prefixes)
+    return ktestable(prefixes, suffixes, infixes, shorts)
+#+END_SRC
+
+
 ** Putting the pieces together
 
 All the blocks seen previously are simply put together in the =ktestable= class.
@@ -116,7 +152,10 @@ All the blocks seen previously are simply put together in the =ktestable= class.
 #+BEGIN_SRC ipython :noweb no-export :eval no-export :results silent
 class ktestable(object):
     <<Init k-test vector>>
+
     <<Ensure correct definition>>
+
+    <<K-test vector union>>
 #+END_SRC
 
 
@@ -127,16 +166,22 @@ We put together some tests to ensure that the implementation works at least supe
 #+BEGIN_SRC ipython :eval no-export :results output :exports both
 tests = {
     'invalid example': ({'aa'}, {'aa'}, {'aaaa'}, {'ada'}),
-    'valid example': ({'aa'}, {'aa'}, {'aaa'}, {'aa'})
+    'aa+': ({'aa'}, {'aa'}, {'aaa'}, {'aa'}),
+    'bb+': ({'bb'}, {'bb'}, {'bbb'}, {'bb'})
 }
+instanciations = {}
 
 for name, parameters in tests.items():
     try:
-        aaaa = ktestable(*parameters)
+        ktest = ktestable(*parameters)
         print('The creation of %s went well' % name)
+        instanciations[name] = ktest
     except ValueError as e:
         print('The creation of %s failed:\n - ' % name, e)
     print()
+
+union = instanciations['aa+'].union(instanciations['bb+'])
+print(union.prefixes)
 #+END_SRC
 
 #+RESULTS:
@@ -144,8 +189,11 @@ for name, parameters in tests.items():
 The creation of invalid example failed:
  -  Incorrect infix length, incorrect short string length, short strings conditions not satisfied.
 
-The creation of valid example went well
+The creation of aa+ went well
 
+The creation of bb+ went well
+
+{'bb', 'aa'}
 :END:
 
 
