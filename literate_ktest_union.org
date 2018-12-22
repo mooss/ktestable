@@ -58,11 +58,16 @@ We will present a possible implementation of those definitions and algorithms in
 Modular meaning here that we will implement concepts as they come and assemble them later as a whole when the necessary parts are complete.
 So if an src_python[:exports code]{__init__} appears in the wild without its enclosing src_python[:exports code]{class}, it's nothing to worry about.
 
-* k-test vector
+* \(k\)-testable languages
 
-** Definition
+A \(k\)-testable language is a language that can be recognised by sliding a window of size $k$ over an input.
+By definition, we have $k > 0$ since sliding a window of size zero or less would hardly make any sense.
 
-A k-testable language can be described using a k-test vector which is a $4-tuple$ $Z = \langle I, F, T, C \rangle$ :
+All necessary informations to recognise such a language can be stored in a \(k\)-test vector.
+
+** \(k\)-test vector
+
+A \(k\)-test vector is a \(4\)-tuple $Z = \langle I, F, T, C \rangle$:
  - $I \in \Sigma^{k-1}$ is a set of allowed prefixes,
  - $F \in \Sigma^{k-1}$ is a set of allowed suffixes,
  - $T \in \Sigma^k$ is a set of allowed segments, and
