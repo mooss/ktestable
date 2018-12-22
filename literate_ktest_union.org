@@ -1,8 +1,7 @@
 # Local Variables:
 # eval: (progn (org-babel-goto-named-src-block "starting_block") (org-babel-execute-src-block) (outline-hide-sublevels 1))
 # End:
-#+PROPERTY: header-args:ipython :eval never
-#+OPTIONS: <<:nil
+#+PROPERTY: header-args:ipython :eval never :session ktestable
 #+TITLE: Learning union of k-testable languages
 #+subtitle: Statistical and symbolic language modeling project
 #+AUTHOR: Rania el Bouhssini, Martin Laville and Félix Jamet
@@ -45,6 +44,7 @@ This modification of =org-babel-exp-code= includes the name of named code blocks
                        (nth 2 info))
              ("name"  . ,(or (nth 4 info) ""))))))
 
+
 (advice-add 'org-babel-exp-code :override
             #'my/org-babel-exp-code)
 #+END_SRC
@@ -60,20 +60,22 @@ So if an src_python[:exports code]{__init__} appears in the wild without its enc
 
 * k-test vector
 
+** Definition
+
 A k-testable language can be described using a k-test vector which is a $4-tuple$ $Z = \langle I, F, T, C \rangle$ :
  - $I \in \Sigma^{k-1}$ is a set of allowed prefixes,
  - $F \in \Sigma^{k-1}$ is a set of allowed suffixes,
  - $T \in \Sigma^k$ is a set of allowed segments, and
  - $C \in \Sigma^{<k}$ is a set of allowed short strings satisfying $I \cap F = C \cap \Sigma^{k-1}$.
 
-We will refer to $I$, $F$, $T$, $C$ respectively as the allowed prefixes, suffixes, infixes and short strings. An intuitive way to formulate the constraint on short strings is that the short strings of length $k-1$ have to be both prefixes and suffixes and vice versa.
+We will refer to $I$, $F$, $T$ and $C$ respectively as the allowed prefixes, suffixes, infixes and short strings. An intuitive way to formulate the constraint on short strings is that the short strings of length $k-1$ have to be both prefixes and suffixes and vice versa.
 
 This definition can be translated into an init.
 
 #+name: Init k-test vector
 #+BEGIN_SRC ipython
 def __init__(self, prefixes, suffixes, infixes, shorts):
-    self.k = len(prefixes[0]) + 1
+    self.k = len(next(iter(prefixes))) + 1
     self.prefixes = prefixes
     self.suffixes = suffixes
     self.infixes = infixes
@@ -87,25 +89,65 @@ We then write =ensure_correct_definition= to make sure that the created k-test v
 #+BEGIN_SRC ipython
 def ensure_correct_definition(self):
     def same_length(collection, reference_length):
-        return all(filter(lambda x: len(x) == reference_length, collection))
+        return all(map(lambda x: len(x) == reference_length, collection))
 
     errors = []
     if not same_length(self.prefixes, self.k - 1):
-        errors.append("Incorrect prefix length.")
+        errors.append('incorrect prefix length')
     if not same_length(self.suffixes, self.k - 1):
-        errors.append("Incorrect suffix length.")
+        errors.append('incorrect suffix length')
     if not same_length(self.infixes, self.k):
-        errors.append("Incorrect infix length.")
-    if not all(filter(lambda x: len(x) < self.k, self.shorts)):
-        errors.append("Incorrect short string length.")
+        errors.append('incorrect infix length')
+    if not all(map(lambda x: len(x) < self.k, self.shorts)):
+        errors.append('incorrect short string length')
     presufixes = self.prefixes & self.suffixes
-    shorts_len_k = set(filter(lambda x: len(x) == self.k - 1))
+    shorts_len_k = set(filter(lambda x: len(x) == self.k - 1, self.shorts))
     if presufixes != shorts_len_k:
-        errors.append("Short strings conditions not satisfied.")
+        errors.append('short strings conditions not satisfied')
 
     if len(errors) >0:
-        raise ValueError(' '.join(errors))
+        raise ValueError(', '.join(errors).capitalize() + '.')
 #+END_SRC
+
+** Putting the pieces together
+
+All the blocks seen previously are simply put together in the =ktestable= class.
+
+#+BEGIN_SRC ipython :noweb no-export :eval no-export :results silent
+class ktestable(object):
+    <<Init k-test vector>>
+    <<Ensure correct definition>>
+#+END_SRC
+
+
+** Tests
+
+We put together some tests to ensure that the implementation works at least superficially as intended:
+
+#+BEGIN_SRC ipython :eval no-export :results output :exports both
+tests = {
+    'invalid example': ({'aa'}, {'aa'}, {'aaaa'}, {'ada'}),
+    'valid example': ({'aa'}, {'aa'}, {'aaa'}, {'aa'})
+}
+
+for name, parameters in tests.items():
+    try:
+        aaaa = ktestable(*parameters)
+        print('The creation of %s went well' % name)
+    except ValueError as e:
+        print('The creation of %s failed:\n - ' % name, e)
+    print()
+#+END_SRC
+
+#+RESULTS:
+:RESULTS:
+The creation of invalid example failed:
+ -  Incorrect infix length, incorrect short string length, short strings conditions not satisfied.
+
+The creation of valid example went well
+
+:END:
+
 
 * Sources
 
