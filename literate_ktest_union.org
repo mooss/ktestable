@@ -63,7 +63,7 @@ So if an src_python[:exports code]{__init__} appears in the wild without its enc
 A \(k\)-testable language is a language that can be recognised by sliding a window of size $k$ over an input.
 By definition, we have $k > 0$ since sliding a window of size zero or less would hardly make any sense.
 
-All necessary informations to recognise such a language can be stored in a \(k\)-test vector.
+All necessary informations to recognise such a language can be stored in a \(k\)-test vector, which will be implemented in the =ktestable= class.
 
 ** \(k\)-test vector
 
@@ -79,8 +79,8 @@ This definition can be translated into an init.
 
 #+name: Init k-test vector
 #+BEGIN_SRC ipython
-def __init__(self, prefixes, suffixes, infixes, shorts):
-    self.k = len(next(iter(prefixes))) + 1
+def __init__(self, prefixes, suffixes, infixes, shorts, k=None):
+    self.k = len(next(iter(infixes))) if k is None else k
     self.prefixes = prefixes
     self.suffixes = suffixes
     self.infixes = infixes
@@ -105,9 +105,10 @@ def ensure_correct_definition(self):
         errors.append('incorrect infix length')
     if not all(map(lambda x: len(x) < self.k, self.shorts)):
         errors.append('incorrect short string length')
-    presufixes = self.prefixes & self.suffixes
+
+    presuffixes = self.prefixes & self.suffixes
     shorts_len_k = set(filter(lambda x: len(x) == self.k - 1, self.shorts))
-    if presufixes != shorts_len_k:
+    if presuffixes != shorts_len_k:
         errors.append('short strings conditions not satisfied')
 
     if len(errors) >0:
@@ -126,8 +127,18 @@ A partial order $\sqsubseteq$ can be defined on $\mathcal{T}_k$ as follow:
 
 With this partial order, a union, an intersection and a symmetric difference can be defined on the \(k\)-test vectors $Z = \langle I, F, T, C \rangle$ and $Z' = \langle I', F', T', C' \rangle$.
 
+First, we need to be able to check wether two =testable= are compatible, /i.e./ wether they have the same =k=.
 
-*** Union $\sqcup$
+#+name: K-test vector compatibility
+#+BEGIN_SRC ipython
+def ensure_compatibility(self, other):
+    if self.k != other.k:
+        raise ValueError('Incompatible k-test vectors: length mismatch (%d != %d)' %
+                         (self.k, other.k))
+#+END_SRC
+
+
+*** Union ($\sqcup$)
 
 \begin{equation*}
 Z \sqcup Z' = \langle I \cup I', F \cup F', T \cup T', C \cup C' \cup (I \cap F') \cup (I' \cap F) \rangle
@@ -135,18 +146,77 @@ Z \sqcup Z' = \langle I \cup I', F \cup F', T \cup T', C \cup C' \cup (I \cap F'
 
 We can see that the constraint on short strings $I \cap F = C \cap \Sigma^{k-1}$ is still respected because the short strings are updated with all the cases which could contradict it.
 
-The implementation is a quite litteral translation.
+The implementation is a quite litteral translation if this definition.
 
 #+name: K-test vector union
 #+BEGIN_SRC ipython
 def union(self, other):
+    self.ensure_compatibility(other)
     prefixes = self.prefixes | other.prefixes
     suffixes = self.suffixes | other.suffixes
     infixes = self.infixes | other.infixes
     shorts = self.shorts | other.shorts |\
         (self.prefixes & other.suffixes) |\
         (self.suffixes & other.prefixes)
-    return ktestable(prefixes, suffixes, infixes, shorts)
+    return ktestable(prefixes, suffixes, infixes, shorts, k=self.k)
+#+END_SRC
+
+*** Intersection ($\sqcap$)
+
+\begin{equation*}
+Z \sqcap Z' = \langle I \cap I', F \cap F', T \cap T', C \cap C' \rangle
+\end{equation*}
+
+Once again, the implementation is straightforward.
+
+#+name: K-test vector intersection
+#+BEGIN_SRC ipython
+def intersection(self, other):
+    self.ensure_compatibility(other)
+    prefixes = self.prefixes & other.prefixes
+    suffixes = self.suffixes & other.suffixes
+    infixes = self.infixes & other.infixes
+    shorts = self.shorts & other.shorts
+    return ktestable(prefixes, suffixes, infixes, shorts, k=self.k)
+#+END_SRC
+
+*** Symmetric difference ($\triangle$)
+
+\begin{equation*}
+Z \triangle Z' = \langle I \triangle I', F \triangle F', T \triangle T', C \triangle C' \triangle (I \cap F') \triangle (I' \cap F) \rangle
+\end{equation*}
+
+Once more, it's only a matter of translating the set operations into python code.
+
+#+name: K-test vector symmetric difference
+#+BEGIN_SRC ipython
+def symmetric_difference(self, other):
+    self.ensure_compatibility(other)
+    prefixes = self.prefixes ^ other.prefixes
+    suffixes = self.suffixes ^ other.suffixes
+    infixes = self.infixes ^ other.infixes
+    print(prefixes, suffixes, infixes)
+    shorts = self.shorts ^ other.shorts ^\
+        (self.prefixes & other.suffixes) ^\
+        (self.suffixes & other.prefixes)
+    return ktestable(prefixes, suffixes, infixes, shorts, k=self.k)
+#+END_SRC
+
+*** Operators
+
+Since the semantic of the three operations defined above are similar to those of sets, we create operators for them, matching the operators of =set=, the python builtin.
+That is to say =|= for union, =&= for intersection and =^= for symmetric difference.
+
+#+name: K-test vector operators
+#+BEGIN_SRC ipython
+def __or__(self, other):
+    return self.union(other)
+
+def __and__(self, other):
+    return self.intersection(other)
+
+def __xor__(self, other):
+    return self.symmetric_difference(other)
 #+END_SRC
 
 
@@ -160,13 +230,21 @@ class ktestable(object):
 
     <<Ensure correct definition>>
 
+    <<K-test vector compatibility>>
+
     <<K-test vector union>>
+
+    <<K-test vector intersection>>
+
+    <<K-test vector symmetric difference>>
+
+    <<K-test vector operators>>
 #+END_SRC
 
 
 ** Tests
 
-We put together some tests to ensure that the implementation works at least superficially as intended:
+We make some tests to ensure that the implementation works at least superficially as intended:
 
 #+BEGIN_SRC ipython :eval no-export :results output :exports both
 tests = {
@@ -185,19 +263,28 @@ for name, parameters in tests.items():
         print('The creation of %s failed:\n - ' % name, e)
     print()
 
-union = instanciations['aa+'].union(instanciations['bb+'])
+
+union = instanciations['aa+'] | instanciations['bb+']
+intersection = instanciations['aa+'] & instanciations['bb+']
+symmetric_difference = instanciations['aa+'] ^ instanciations['bb+']
+
 print(union.prefixes)
+print(intersection.prefixes)
+print(symmetric_difference.prefixes)
 #+END_SRC
 
 #+RESULTS:
 :RESULTS:
 The creation of invalid example failed:
- -  Incorrect infix length, incorrect short string length, short strings conditions not satisfied.
+ -  Incorrect prefix length, incorrect suffix length, short strings conditions not satisfied.
 
 The creation of aa+ went well
 
 The creation of bb+ went well
 
+{'bb', 'aa'} {'bb', 'aa'} {'aaa', 'bbb'}
+{'bb', 'aa'}
+set()
 {'bb', 'aa'}
 :END:
 
