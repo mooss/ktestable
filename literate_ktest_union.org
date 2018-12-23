@@ -208,7 +208,7 @@ def symmetric_difference(self, other):
 Since the semantic of the three operations defined above are similar to those of sets, we create operators for them, matching the operators of =set=, the python builtin.
 That is to say =|= for union, =&= for intersection and =^= for symmetric difference.
 
-#+name: k-test vector operators
+#+name: k-test vector set operators
 #+BEGIN_SRC ipython
 def __or__(self, other):
     return self.union(other)
@@ -220,7 +220,7 @@ def __xor__(self, other):
     return self.symmetric_difference(other)
 #+END_SRC
 
-** Metrics
+** Measures
 
 The theorem 3 of Linard /et al./ (2018) states that
 #+BEGIN_QUOTE
@@ -270,6 +270,8 @@ The distance between two \(k\)-test vectors is the cardinality of their symmetri
 d(Z, Z') = \vert Z \triangle Z' \vert
 \end{equation*}
 
+It corresponds intuitively to the number of constituents that must be added or removed in order to go from one \(k\)-test vector to the other.
+
 #+name: k-test vector distance
 #+BEGIN_SRC ipython
 def distance(self, other):
@@ -294,7 +296,7 @@ class ktestable(object):
 
     <<k-test vector symmetric difference>>
 
-    <<k-test vector operators>>
+    <<k-test vector set operators>>
 
     <<k-test vector cardinality>>
 
@@ -306,7 +308,7 @@ class ktestable(object):
 
 We make some tests to ensure that the implementation works at least superficially as intended:
 
-#+BEGIN_SRC ipython :eval no-export :results output :exports both
+#+BEGIN_SRC ipython :eval no-export :results output :exports both :wrap example
 tests = {
     'invalid example': ({'aa'}, {'aa'}, {'aaaa'}, {'ada'}),
     'aa+': ({'aa'}, {'aa'}, {'aaa'}, {'aa'}),
@@ -317,11 +319,10 @@ instanciations = {}
 for name, parameters in tests.items():
     try:
         ktest = ktestable(*parameters)
-        print('The creation of %s went well' % name)
+        print('The creation of "%s" went well' % name)
         instanciations[name] = ktest
     except ValueError as e:
-        print('The creation of %s failed:\n - ' % name, e)
-    print()
+        print('The creation of "%s" failed:\n - ' % name, e)
 
 
 union = instanciations['aa+'] | instanciations['bb+']
@@ -338,21 +339,18 @@ print(len(union), len(intersection))
 #+END_SRC
 
 #+RESULTS:
-:RESULTS:
-The creation of invalid example failed:
+#+BEGIN_example
+The creation of "invalid example" failed:
  -  Incorrect prefix length, incorrect suffix length, short strings conditions not satisfied.
-
-The creation of aa+ went well
-
-The creation of bb+ went well
-
-{'bb', 'aa'}
+The creation of "aa+" went well
+The creation of "bb+" went well
+{'aa', 'bb'}
 set()
-{'bb', 'aa'}
+{'aa', 'bb'}
 0
 6
 6 0
-:END:
+#+END_example
 
 
 * Sources
