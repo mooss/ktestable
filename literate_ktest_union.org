@@ -1,6 +1,5 @@
-# Local Variables:
-# eval: (progn (org-babel-goto-named-src-block "starting_block") (org-babel-execute-src-block) (outline-hide-sublevels 1))
-# End:
+# -*- eval: (progn (org-babel-goto-named-src-block "starting_block") (org-babel-execute-src-block) (outline-hide-sublevels 1)); -*-
+
 #+PROPERTY: header-args:ipython :eval never :session ktestable
 #+TITLE: Learning union of k-testable languages
 #+subtitle: Statistical and symbolic language modeling project
