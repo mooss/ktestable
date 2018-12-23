@@ -352,6 +352,43 @@ set()
 6 0
 #+END_example
 
+* Efficient algorithm
+
+** Union consistency
+
+Before learning the union of languages, we need to ensure the union consistency between two \(k\)-test vectors $Z$ and $Z'$, /i.e./ the fact that the union of their languages should be the languages and their union.
+Linard /et al./'s proposition 4 provides a way to do this.
+
+Proposition 4 relies on padded prefixes and suffixes.
+A padded prefix is a prefix with an out-of-alphabet character $\bullet$ added at the beginning of its string.
+A padded suffix adds this character at the end of its string.
+
+The idea is to create an oriented graph with the prefixes, suffixes and infixes.
+There are three aspects to this graph.
+
+ - The vertices :: are the padded prefixes, the padded suffixes and the infixes :
+
+                   $V = \{ \bullet{}u \vert u \in I \cup I' \} \cup \{ u\bullet \vert u \in F \cup F' \} \cup T \cup T'$
+
+ - The edges :: are drawn from one vertex to the other if the suffix of size $k-1$ of the first vertex is equal to the prefix of size $k-1$ of the second vertex :
+
+                $E = \{(au, ub) \in V \times V \vert a, b \in \Sigma \cup \{\bullet\}, u \in \Sigma^{k-1} \}$
+
+ - The colors :: are reflecting wether a vertex is ``endemic'' to one vector :
+   - a red vertex is endemic to $Z$,
+   - a blue vertex is endemic to $Z'$, and
+   - a white vertex is endemic to none.
+
+A vertex $v$ is endemic to a vector $X = \langle I, F, T, C \rangle$ compared to another vector $X' = \langle I', F', T', C' \rangle$ if it appears only in $X$. More formally, it is endemic if the following holds:
+\begin{equation*}
+  \begin{cases}
+    u \in I \setminus I' & \text{if } v = \bullet u \\
+    u \in F \setminus F' & \text{if } v = u \bullet \\
+    v \in T \setminus T' & \text{otherwise}
+  \end{cases}
+\end{equation*}
+
+Linard /et al./ have shown that the union consistency is ensured if and only if there exists no path between a red vertex and a blue vertex.
 
 * Sources
 
