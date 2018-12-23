@@ -52,7 +52,7 @@ This modification of =org-babel-exp-code= includes the name of named code blocks
 
 * Introduction
 
-Unless explicitely specified, all definitions and algorithms in this document are coming from Linard et al. [1].
+Unless explicitely specified, all definitions and algorithms in this document are coming from Linard /et al./ (2018).
 
 We will present a possible implementation of those definitions and algorithms in a modular fashion, using Python3.
 Modular meaning here that we will implement concepts as they come and assemble them later as a whole when the necessary parts are complete.
@@ -61,9 +61,10 @@ So if an src_python[:exports code]{__init__} appears in the wild without its enc
 * \(k\)-testable languages
 
 A \(k\)-testable language is a language that can be recognised by sliding a window of size $k$ over an input.
-By definition, we have $k > 0$ since sliding a window of size zero or less would hardly make any sense.
+By definition, we have $k > 0$ since sliding a window of null or negative size would hardly make any sense.
 
-All necessary informations to recognise such a language can be stored in a \(k\)-test vector, which will be implemented in the =ktestable= class.
+A language is said to be \(k\)-testable in the strict sense (\(k\)-TSS) if it can be represented using a construct called a \(k\)-test vector.
+The necessary informations and operations on this construct will be implemented in the =ktestable= class.
 
 ** \(k\)-test vector
 
@@ -73,7 +74,9 @@ A \(k\)-test vector is a \(4\)-tuple $Z = \langle I, F, T, C \rangle$:
  - $T \in \Sigma^k$ is a set of allowed segments, and
  - $C \in \Sigma^{<k}$ is a set of allowed short strings satisfying $I \cap F = C \cap \Sigma^{k-1}$.
 
-We will refer to $I$, $F$, $T$ and $C$ respectively as the allowed prefixes, suffixes, infixes and short strings. An intuitive way to formulate the constraint on short strings is that the short strings of length $k-1$ have to be both prefixes and suffixes and vice versa.
+We will refer to $I$, $F$, $T$ and $C$ respectively as the allowed prefixes, suffixes, infixes and short strings.
+Moreover, we will refer to $I \cap F$, /i.e./ the prefixes that are also suffixes as presuffixes.
+An intuitive way to formulate the constraint on short strings is that the short strings of length $k-1$ have to be presuffixes and vice versa.
 
 This definition can be translated into an init.
 
@@ -88,7 +91,7 @@ def __init__(self, prefixes, suffixes, infixes, shorts, k=None):
     self.ensure_correct_definition()
 #+END_SRC
 
-We then write =ensure_correct_definition= to make sure that the created k-test vector respects the conditions of the definition.
+We then write =ensure_correct_definition= to make sure that the created \(k\)-test vector respects the conditions of the definition.
 
 #+name: Ensure correct definition
 #+BEGIN_SRC ipython
@@ -129,7 +132,7 @@ With this partial order, a union, an intersection and a symmetric difference can
 
 First, we need to be able to check wether two =testable= are compatible, /i.e./ wether they have the same =k=.
 
-#+name: K-test vector compatibility
+#+name: k-test vector compatibility
 #+BEGIN_SRC ipython
 def ensure_compatibility(self, other):
     if self.k != other.k:
@@ -148,7 +151,7 @@ We can see that the constraint on short strings $I \cap F = C \cap \Sigma^{k-1}$
 
 The implementation is a quite litteral translation if this definition.
 
-#+name: K-test vector union
+#+name: k-test vector union
 #+BEGIN_SRC ipython
 def union(self, other):
     self.ensure_compatibility(other)
@@ -169,7 +172,7 @@ Z \sqcap Z' = \langle I \cap I', F \cap F', T \cap T', C \cap C' \rangle
 
 Once again, the implementation is straightforward.
 
-#+name: K-test vector intersection
+#+name: k-test vector intersection
 #+BEGIN_SRC ipython
 def intersection(self, other):
     self.ensure_compatibility(other)
@@ -188,14 +191,13 @@ Z \triangle Z' = \langle I \triangle I', F \triangle F', T \triangle T', C \tria
 
 Once more, it's only a matter of translating the set operations into python code.
 
-#+name: K-test vector symmetric difference
+#+name: k-test vector symmetric difference
 #+BEGIN_SRC ipython
 def symmetric_difference(self, other):
     self.ensure_compatibility(other)
     prefixes = self.prefixes ^ other.prefixes
     suffixes = self.suffixes ^ other.suffixes
     infixes = self.infixes ^ other.infixes
-    print(prefixes, suffixes, infixes)
     shorts = self.shorts ^ other.shorts ^\
         (self.prefixes & other.suffixes) ^\
         (self.suffixes & other.prefixes)
@@ -207,7 +209,7 @@ def symmetric_difference(self, other):
 Since the semantic of the three operations defined above are similar to those of sets, we create operators for them, matching the operators of =set=, the python builtin.
 That is to say =|= for union, =&= for intersection and =^= for symmetric difference.
 
-#+name: K-test vector operators
+#+name: k-test vector operators
 #+BEGIN_SRC ipython
 def __or__(self, other):
     return self.union(other)
@@ -219,6 +221,61 @@ def __xor__(self, other):
     return self.symmetric_difference(other)
 #+END_SRC
 
+** Metrics
+
+The theorem 3 of Linard /et al./ (2018) states that
+#+BEGIN_QUOTE
+Any language that is a union of \(k\)-TSS languages can be identified in the limit from positive examples.
+#+END_QUOTE
+
+We will call ``a union of \(k\)-TSS languages'' a \(k\)-TSS-union.
+This Theorem means that when trying to learn a \(k\)-TSS-union from examples, the language will be learned at some point, having only seen a finite number of examples, even though the language might have an infinite number of examples.
+
+It provides us with a baseline algorithm to learn a \(k\)-TSS-union. We consider each example as a language of its own and take the union of those examples. One problem of this algorithm is that it requires a great number of \(k\)-test vectors and will thus tend to be computationnaly expensive.
+
+The solution to this problem is to consider it as a clustering problem by putting together similar vectors.
+The clustering algorithm will be seen later.
+Before this, there is a need to define a metric on \(k\)-test vectors, metric which will use the notion of cardinality.
+
+*** Cardinality
+
+The cardinality of a \(k\)-test vector $Z = \langle I, F, T, C \rangle$ is defined as:
+\begin{equation*}
+\vert Z \vert = \vert I \vert +\vert F \vert +\vert T \vert +\vert C \cap \Sigma^{k-1} \vert
+\end{equation*}
+
+Once again, we see the influence of the short strings constraint since only the short strings of length less then $k-1$ are taken into account.
+Curiously, there is nothing in place to compensate for the presuffixes being counted twice.
+An alternative measure that takes this deduplication into account can be defined as:
+\begin{equation*}
+\vert Z \vert = \vert I \vert +\vert F \vert +\vert T \vert +\vert C \cap \Sigma^{k-1} \vert - \vert I \cap F \vert
+\end{equation*}
+But we will still use the original definition.
+
+#+name: k-test vector cardinality
+#+BEGIN_SRC ipython
+def cardinality(self):
+    return len(self.prefixes) + len(self.suffixes) + len(self.infixes) +\
+        sum(map(lambda x: 1 if len(x) < self.k - 1 else 0, self.shorts))
+
+def __len__(self):
+    return self.cardinality()
+#+END_SRC
+
+We also defined the operator =len=, since the meaning is similar to the builtin =len= of python sets.
+
+*** Distance
+
+The distance between two \(k\)-test vectors is the cardinality of their symmetric difference:
+\begin{equation*}
+d(Z, Z') = \vert Z \triangle Z' \vert
+\end{equation*}
+
+#+name: k-test vector distance
+#+BEGIN_SRC ipython
+def distance(self, other):
+    return len(self ^ other)
+#+END_SRC
 
 ** Putting the pieces together
 
@@ -230,15 +287,19 @@ class ktestable(object):
 
     <<Ensure correct definition>>
 
-    <<K-test vector compatibility>>
+    <<k-test vector compatibility>>
 
-    <<K-test vector union>>
+    <<k-test vector union>>
 
-    <<K-test vector intersection>>
+    <<k-test vector intersection>>
 
-    <<K-test vector symmetric difference>>
+    <<k-test vector symmetric difference>>
 
-    <<K-test vector operators>>
+    <<k-test vector operators>>
+
+    <<k-test vector cardinality>>
+
+    <<k-test vector distance>>
 #+END_SRC
 
 
@@ -271,6 +332,10 @@ symmetric_difference = instanciations['aa+'] ^ instanciations['bb+']
 print(union.prefixes)
 print(intersection.prefixes)
 print(symmetric_difference.prefixes)
+
+print(union.distance(union))
+print(union.distance(intersection))
+print(len(union), len(intersection))
 #+END_SRC
 
 #+RESULTS:
@@ -282,13 +347,15 @@ The creation of aa+ went well
 
 The creation of bb+ went well
 
-{'bb', 'aa'} {'bb', 'aa'} {'aaa', 'bbb'}
 {'bb', 'aa'}
 set()
 {'bb', 'aa'}
+0
+6
+6 0
 :END:
 
 
 * Sources
 
- 1. Linard, A., de la Higuera C., Vaandrager F.:Learning Unions of k-Testable Languages (http://www.sws.cs.ru.nl/publications/papers/fvaan/kTestable/main.pdf)
+ 1. Linard, A., de la Higuera C., Vaandrager F.:Learning Unions of k-Testable Languages, (2018): https://arxiv.org/abs/1812.08269
