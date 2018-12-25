@@ -51,7 +51,7 @@ This modification of =org-babel-exp-code= includes the name of named code blocks
 
 * Introduction
 
-Unless explicitely specified, all definitions and algorithms in this document are coming from Linard /et al./ (2018).
+Unless explicitely specified, all definitions and algorithms in this document are coming from Linard /et al./ (2018), which we will sometimes refer to as ``the paper''.
 
 We will present a possible implementation of those definitions and algorithms in a modular fashion, using Python3.
 Modular meaning here that we will implement concepts as they come and assemble them later as a whole when the necessary parts are complete.
@@ -208,7 +208,7 @@ def symmetric_difference(self, other):
 Since the semantic of the three operations defined above are similar to those of sets, we create operators for them, matching the operators of =set=, the python builtin.
 That is to say =|= for union, =&= for intersection and =^= for symmetric difference.
 
-#+name: k-test vector set operators
+#+name: k-test vector operators
 #+BEGIN_SRC ipython
 def __or__(self, other):
     return self.union(other)
@@ -278,10 +278,11 @@ def distance(self, other):
     return len(self ^ other)
 #+END_SRC
 
-** Putting the pieces together
+** Putting the pieces together :noexport:
 
 All the blocks seen previously are simply put together in the =ktestable= class.
 
+#+name: ktestable class
 #+BEGIN_SRC ipython :noweb no-export :eval no-export :results silent
 class ktestable(object):
     <<Init k-test vector>>
@@ -296,7 +297,7 @@ class ktestable(object):
 
     <<k-test vector symmetric difference>>
 
-    <<k-test vector set operators>>
+    <<k-test vector operators>>
 
     <<k-test vector cardinality>>
 
@@ -344,9 +345,9 @@ The creation of "invalid example" failed:
  -  Incorrect prefix length, incorrect suffix length, short strings conditions not satisfied.
 The creation of "aa+" went well
 The creation of "bb+" went well
-{'aa', 'bb'}
+{'bb', 'aa'}
 set()
-{'aa', 'bb'}
+{'bb', 'aa'}
 0
 6
 6 0
@@ -366,15 +367,15 @@ A padded suffix adds this character at the end of its string.
 The idea is to create an oriented graph with the prefixes, suffixes and infixes.
 There are three aspects to this graph.
 
- - The vertices :: are the padded prefixes, the padded suffixes and the infixes :
+ - The vertices :: are the padded prefixes, the padded suffixes and the infixes:
 
                    $V = \{ \bullet{}u \vert u \in I \cup I' \} \cup \{ u\bullet \vert u \in F \cup F' \} \cup T \cup T'$
 
- - The edges :: are drawn from one vertex to the other if the suffix of size $k-1$ of the first vertex is equal to the prefix of size $k-1$ of the second vertex :
+ - The edges :: are drawn from one vertex to the other if the suffix of size $k-1$ of the first vertex is equal to the prefix of size $k-1$ of the second vertex:
 
                 $E = \{(au, ub) \in V \times V \vert a, b \in \Sigma \cup \{\bullet\}, u \in \Sigma^{k-1} \}$
 
- - The colors :: are reflecting wether a vertex is ``endemic'' to one vector :
+ - The colors :: are reflecting wether a vertex is ``endemic'' to one vector:
    - a red vertex is endemic to $Z$,
    - a blue vertex is endemic to $Z'$, and
    - a white vertex is endemic to none.
@@ -388,7 +389,125 @@ A vertex $v$ is endemic to a vector $X = \langle I, F, T, C \rangle$ compared to
   \end{cases}
 \end{equation*}
 
-Linard /et al./ have shown that the union consistency is ensured if and only if there exists no path between a red vertex and a blue vertex.
+The paper shows that the union consistency is ensured if and only if there exists no path between a red vertex and a blue vertex.
+A path between red and blue vertices means that a word out of both languages emerges in the union, which is precisely what we want to avoid.
+
+
+** Computing vertex accessibility
+
+For brevity and sanity's sake, we will use a library to do operations on graphs. We choose NetworkX[fn:: See https://networkx.github.io/documentation/stable/install.html.] since it has proved to be easier to install than the alternatives.
+We suppose NetworkX has already been imported like so:
+#+BEGIN_SRC ipython
+import networkx as nx
+#+END_SRC
+
+The union consistency computation will be wrapped into an additional method of =ktestable=, which can be decomposed into four steps.
+
+#+name: Union consistency
+#+BEGIN_SRC ipython :noweb no-export
+def is_union_consistent_with(self, other):
+    <<Vertices construction>>
+
+    <<Edges construction>>
+
+    <<Path search>>
+
+    <<Paths analysis>>
+#+END_SRC
+
+We construct both the colors and the vertices at the same time since there is no reason not to.
+Rather than using padded prefixes and suffixes, we add a one letter prefix to each vertex.
+
+#+name: Vertices construction
+#+BEGIN_SRC ipython
+def color_construction(left, right, nature):
+    reds = left - right
+    blues = right - left
+    whites = left & right
+    def add_prefix(set_):
+        return {nature + el for el in set_}
+    return (add_prefix(reds), add_prefix(blues), add_prefix(whites))
+
+colored_prefixes = color_construction(self.prefixes, other.prefixes, 'P')
+colored_suffixes = color_construction(self.suffixes, other.suffixes, 'S')
+colored_infixes = color_construction(self.infixes, other.infixes, 'I')
+prefixes, suffixes, infixes = map(lambda x: x[0] | x[1] | x[2],
+                                  (colored_prefixes, colored_suffixes, colored_infixes))
+reds, blues, _ = map(lambda x: x[0] | x[1] | x[2],
+                     zip(colored_prefixes, colored_suffixes, colored_infixes))
+reds = set(reds); blues = set(blues)
+#+END_SRC
+
+There are only three ways in which an edge can form between two vertices:
+ - a prefix can connect to an infix,
+ - an infix can connect to another infix, and
+ - an infix can connect to a suffix.
+
+#+name: Edges construction
+#+BEGIN_SRC ipython
+edges = {(pre, inf) for pre in prefixes for inf in infixes
+         if pre[1:] == inf[1:-1]}
+edges.update({(left, right) for left in infixes for right in infixes
+              if left[2:] == right[1:-1]})
+edges.update({(inf, suf) for inf in infixes for suf in suffixes
+              if inf[2:] == suf[1:]})
+#+END_SRC
+
+Searching for a path between reds and blues is akin to find a transitive closure and examine the reachability of red and blue nodes with respect to one another.
+
+#+name:Path search
+#+BEGIN_SRC ipython
+graph = nx.DiGraph()
+graph.add_edges_from(edges)
+closure = nx.algorithms.dag.transitive_closure(graph)
+
+red_reachable = {neighbour for red in reds for neighbour in closure.adj[red]}
+blue_reachable = {neighbour for blue in blues for neighbour in closure.adj[blue]}
+#+END_SRC
+
+Finally, we only have to check if red vertices are reachable to blue vertices and vice versa.
+
+#+name: Paths analysis
+#+BEGIN_SRC ipython
+if red_accessible.isdisjoint(blues) and blue_accessible.isdisjoint(reds):
+    return True
+return False
+#+END_SRC
+
+** Tests
+#+name: ktestable class extension
+#+BEGIN_SRC ipython :exports none :noweb yes :eval no-export
+import networkx as nx
+
+<<ktestable class>>
+
+    <<Union consistency>>
+#+END_SRC
+
+Some basic tests based on examples from the paper.
+
+#+name: Union consistency test
+#+BEGIN_SRC ipython :exports both :eval no-export :results output :wrap example
+examples = {
+    'z3': ({'ab'}, {'bc'}, {'abc', 'bca', 'cab'}, {}),
+    'z4': ({'cb'}, {'ba'}, {'cba', 'bac', 'acb'}, {}),
+    'z5': ({'ab'}, {'ba'}, {'abb', 'bbb', 'bba'}, {}),
+    'z7': ({'ab'}, {'ba'}, {'abb', 'bbb', 'bba'}, {}),
+}
+
+instances = {iden: ktestable(*params) for iden, params in examples.items()}
+
+print(instances['z5'].is_union_consistent_with(instances['z7']))
+print(instances['z3'].is_union_consistent_with(instances['z4']))
+print(instances['z3'].is_union_consistent_with(instances['z7']))
+#+END_SRC
+
+#+RESULTS: Union consistency test
+#+BEGIN_example
+True
+True
+False
+#+END_example
 
 * Sources
 
