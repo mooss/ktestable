@@ -48,10 +48,9 @@ This modification of =org-babel-exp-code= includes the name of named code blocks
             #'my/org-babel-exp-code)
 #+END_SRC
 
-
 * Introduction
 
-Unless explicitely specified, all definitions and algorithms in this document are coming from Linard /et al./ (2018), which we will sometimes refer to as ``the paper''.
+Unless explicitely specified, all definitions and algorithms in this document are coming from Linard /et al./ (2018), which will sometimes be refered to as ``the paper''.
 
 We will present a possible implementation of those definitions and algorithms in a modular fashion, using Python3.
 Modular meaning here that we will implement concepts as they come and assemble them later as a whole when the necessary parts are complete.
@@ -138,7 +137,6 @@ def ensure_compatibility(self, other):
         raise ValueError('Incompatible k-test vectors: length mismatch (%d != %d)' %
                          (self.k, other.k))
 #+END_SRC
-
 
 *** Union ($\sqcup$)
 
@@ -304,7 +302,6 @@ class ktestable(object):
     <<k-test vector distance>>
 #+END_SRC
 
-
 ** Tests
 
 We make some tests to ensure that the implementation works at least superficially as intended:
@@ -395,18 +392,16 @@ A path between red and blue vertices means that a word out of both languages eme
 We will first compute the consistency graph and then test the union consistency.
 Both of these operations will be implemented into their own method of =ktestable=.
 
-
 ** Consistency graph
 
-For brevity and sanity's sake, we will use a library to do operations on graphs. We choose NetworkX[fn:: See https://networkx.github.io/documentation/stable/install.html.] since it has proved to be easier to install than the alternatives.
+For brevity and sanity's sake, we will use a library to do operations on graphs. We have chosen NetworkX[fn:: See https://networkx.github.io/documentation/stable/install.html.] since it has proved to be easier to install than the alternatives.
 
 We suppose NetworkX has already been imported like so:
 #+BEGIN_SRC ipython
 import networkx as nx
 #+END_SRC
 
-The method =consistency_graph= returns both the graph and the red and blue nodes.
-It consists of three parts ;
+The method =consistency_graph= constructs the graph and consists of three parts ;
 
 #+name: Construct consistency graph
 #+BEGIN_SRC ipython :noweb no-export
@@ -418,27 +413,15 @@ def consistency_graph(self, other):
     <<Graph assembling>>
 #+END_SRC
 
-We construct both the colors and the vertices at the same time since there is no reason not to.
-Rather than using padded prefixes and suffixes, we add a one letter prefix to each vertex.
+We construct the vertices but rather than using padded prefixes and suffixes, we prepend the letters =P= and =S= to the prefixes and the suffixes, respectively.
+Those letters allow us to distinguish between presuffixes.
+It is indeed possible to have a presuffix in the union but if the prefix is blue, then the suffix might be red and if we do not distinguish presuffixes, we will not be able to have the right result when searching for multicolor paths in the graph.
 
 #+name: Vertices construction
 #+BEGIN_SRC ipython
-def color_construction(left, right, nature):
-    reds = left - right
-    blues = right - left
-    whites = left & right
-    def add_prefix(set_):
-        return {nature + el for el in set_}
-    return (add_prefix(reds), add_prefix(blues), add_prefix(whites))
-
-colored_prefixes = color_construction(self.prefixes, other.prefixes, 'P')
-colored_suffixes = color_construction(self.suffixes, other.suffixes, 'S')
-colored_infixes = color_construction(self.infixes, other.infixes, 'I')
-prefixes, suffixes, infixes = map(lambda x: x[0] | x[1] | x[2],
-                                  (colored_prefixes, colored_suffixes, colored_infixes))
-reds, blues, _ = map(lambda x: x[0] | x[1] | x[2],
-                     zip(colored_prefixes, colored_suffixes, colored_infixes))
-reds = set(reds); blues = set(blues)
+prefixes = {'P' + el for el in self.prefixes | other.prefixes}
+suffixes = {'S' + el for el in self.suffixes | other.suffixes}
+infixes = {el for el in self.infixes | other.infixes}
 #+END_SRC
 
 There are only three ways in which an edge can form between two vertices:
@@ -449,11 +432,11 @@ There are only three ways in which an edge can form between two vertices:
 #+name: Edges construction
 #+BEGIN_SRC ipython
 edges = {(pre, inf) for pre in prefixes for inf in infixes
-         if pre[1:] == inf[1:-1]}
+         if pre[1:] == inf[:-1]}
 edges.update({(left, right) for left in infixes for right in infixes
-              if left[2:] == right[1:-1]})
+              if left[1:] == right[:-1]})
 edges.update({(inf, suf) for inf in infixes for suf in suffixes
-              if inf[2:] == suf[1:]})
+              if inf[1:] == suf[1:]})
 #+END_SRC
 
 Since we are only interested by the paths between vertices, we construct the graph from the edges only, thus leaving out isolated vertices.
@@ -463,7 +446,7 @@ In any case, there should not be isolated vertices because the \(k\)-test vector
 #+BEGIN_SRC ipython
 graph = nx.DiGraph()
 graph.add_edges_from(edges)
-return graph, reds, blues
+return graph
 #+END_SRC
 
 ** Union consistency implementation
@@ -476,12 +459,20 @@ def is_union_consistent_with(self, other):
     <<Paths analysis>>
 #+END_SRC
 
-
-Searching for a path between reds and blues is akin to find a transitive closure and examine the reachability of red and blue nodes with respect to one another.
+We compute only the red and blue vertices, we do not need the white.
+As has been done before, we prepend a =P= to prefixes and an =S= to suffixes.
+We then search for a path, using the fact that searching for a path between reds and blues is akin to find a transitive closure and examine the reachability of red and blue nodes with respect to one another.
 
 #+name:Path research
 #+BEGIN_SRC ipython
-graph, reds, blues = self.consistency_graph(other)
+reds = {'P' + el for el in self.prefixes - other.prefixes} |\
+    {'S' + el for el in self.suffixes - other.suffixes} |\
+    self.infixes - other.infixes
+blues = {'P' + el for el in other.prefixes - self.prefixes} |\
+    {'S' + el for el in other.suffixes - self.suffixes} |\
+    other.infixes - self.infixes
+
+graph = self.consistency_graph(other)
 closure = nx.algorithms.dag.transitive_closure(graph)
 red_reachable = {neighbour for red in reds for neighbour in closure.adj[red]}
 blue_reachable = {neighbour for blue in blues for neighbour in closure.adj[blue]}
