@@ -401,7 +401,7 @@ We will then see how the nearest-neighbor algorithm can produce a dendrogram, us
 
 ** Union consistency definition
 
-Before learning the union of languages, we need to ensure the union consistency between two \(k\)-test vectors $Z$ and $Z'$, /i.e./ the fact that the union of their languages should be the languages and their union.
+Before learning the union of languages, we need to ensure the union consistency between two \(k\)-test vectors $Z$ and $Z'$, /i.e./ the fact that the union of their languages should be the languages of their union.
 Linard /et al./'s proposition 4 provides a way to do this.
 
 Proposition 4 relies on padded prefixes and suffixes.
@@ -444,7 +444,7 @@ Both of these operations will be implemented into their own method of =ktestable
 
 For brevity and sanity's sake, we will use a library to do operations on graphs. We have chosen NetworkX[fn:: See https://networkx.github.io/documentation/stable/install.html.] since it has proved to be easier to install than the alternatives.
 
-We suppose NetworkX has already been imported like so:
+We suppose NetworkX has already been imported like this:
 #+BEGIN_SRC ipython
 import networkx as nx
 #+END_SRC
