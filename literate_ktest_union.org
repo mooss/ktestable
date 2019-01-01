@@ -276,14 +276,56 @@ def distance(self, other):
     return len(self ^ other)
 #+END_SRC
 
+** Creation from an example
+
+The provided =__init__= method can only construct a \(k\)-testable from its components.
+It's fairly easy to construct the minimal prefixes, suffixes, infixes and short strings necessary to detect an example $e$, or as the authors of the paper call it, a canonical \(k\)-test vector.
+
+The prefixes and suffixes are simply the sets composed of the prefix and suffix of the example.
+The infixes can be defined by extracting all substring of length $k$.
+The only thing to be mindful of is the short strings condition and the case where $e < k - 1$ (when there are no prefixes, only a short string).
+The $e = k$ case sorts itself out because in this situation, the example is just one presuffix.
+
+#+name: 4-tuple from example
+#+BEGIN_SRC ipython
+def ktest_tuple(example, k):
+    if len(example) < k - 1:
+        prefixes = set()
+        suffixes = set()
+        shorts = {example}
+    else:
+        prefixes = {example[:k-1]}
+        suffixes = {example[-k+1:]}
+        shorts = prefixes & suffixes
+
+    infixes = {example[i:i+k] for i in range(0, len(example) - k + 1)}
+    return (prefixes, suffixes, infixes, shorts)
+#+END_SRC
+
+We use this function to create a factory method for the =ktestable= class.
+
+#+name: Construct ktestable from example
+#+BEGIN_SRC ipython
+@classmethod
+def from_example(cls, example, k):
+    return cls(*ktest_tuple_from_example(example, k))
+#+END_SRC
+
+
+
 ** Putting the pieces together :noexport:
 
 All the blocks seen previously are simply put together in the =ktestable= class.
 
 #+name: ktestable class
 #+BEGIN_SRC ipython :noweb no-export :eval no-export :results silent
+<<4-tuple from example>>
+
+
 class ktestable(object):
     <<Init k-test vector>>
+
+    <<Construct ktestable from example>>
 
     <<Ensure correct definition>>
 
@@ -309,18 +351,18 @@ We make some tests to ensure that the implementation works at least superficiall
 #+BEGIN_SRC ipython :eval no-export :results output :exports both :wrap example
 tests = {
     'invalid example': ({'aa'}, {'aa'}, {'aaaa'}, {'ada'}),
-    'aa+': ({'aa'}, {'aa'}, {'aaa'}, {'aa'}),
-    'bb+': ({'bb'}, {'bb'}, {'bbb'}, {'bb'})
+    'aa+': ktest_tuple('aaa', 3),
+    'bb+': ktest_tuple('bbb', 3)
 }
 instanciations = {}
 
 for name, parameters in tests.items():
     try:
         ktest = ktestable(*parameters)
-        print('The creation of "%s" went well' % name)
+        print('The creation of "%s": %s went well' % (name, parameters))
         instanciations[name] = ktest
     except ValueError as e:
-        print('The creation of "%s" failed:\n - ' % name, e)
+        print('The creation of "%s": %s failed:\n -' % (name, parameters), e)
 
 
 union = instanciations['aa+'] | instanciations['bb+']
@@ -338,13 +380,13 @@ print(len(union), len(intersection))
 
 #+RESULTS:
 #+BEGIN_example
-The creation of "invalid example" failed:
- -  Incorrect prefix length, incorrect suffix length, short strings conditions not satisfied.
-The creation of "aa+" went well
-The creation of "bb+" went well
+The creation of "invalid example": ({'aa'}, {'aa'}, {'aaaa'}, {'ada'}) failed:
+ - Incorrect prefix length, incorrect suffix length, short strings conditions not satisfied.
+The creation of "aa+": ({'aa'}, {'aa'}, {'aaa'}, {'aa'}) went well
+The creation of "bb+": ({'bb'}, {'bb'}, {'bbb'}, {'bb'}) went well
 {'bb', 'aa'}
 set()
-{'bb', 'aa'}
+{'aa', 'bb'}
 0
 6
 6 0
