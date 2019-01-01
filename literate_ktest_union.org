@@ -70,7 +70,7 @@ A \(k\)-test vector is a \(4\)-tuple $Z = \langle I, F, T, C \rangle$:
  - $I \in \Sigma^{k-1}$ is a set of allowed prefixes,
  - $F \in \Sigma^{k-1}$ is a set of allowed suffixes,
  - $T \in \Sigma^k$ is a set of allowed segments, and
- - $C \in \Sigma^{<k}$ is a set of allowed short strings satisfying $I \cap F = C \cap \Sigma^{k-1}$.
+ - \(C \in \Sigma^{\textless k}\) is a set of allowed short strings satisfying $I \cap F = C \cap \Sigma^{k-1}$.
 
 We will refer to $I$, $F$, $T$ and $C$ respectively as the allowed prefixes, suffixes, infixes and short strings.
 Moreover, we will refer to $I \cap F$, /i.e./ the prefixes that are also suffixes as presuffixes.
