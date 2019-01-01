@@ -128,7 +128,7 @@ A partial order $\sqsubseteq$ can be defined on $\mathcal{T}_k$ as follow:
 
 With this partial order, a union, an intersection and a symmetric difference can be defined on the \(k\)-test vectors $Z = \langle I, F, T, C \rangle$ and $Z' = \langle I', F', T', C' \rangle$.
 
-First, we need to be able to check wether two =testable= are compatible, /i.e./ wether they have the same =k=.
+First, we need to be able to check whether two =testable= are compatible, /i.e./ whether they have the same =k=.
 
 #+name: k-test vector compatibility
 #+BEGIN_SRC ipython
@@ -419,7 +419,7 @@ We will call this graph the consistency graph, and there are three aspects to it
 
                 $E = \{(au, ub) \in V \times V \vert a, b \in \Sigma \cup \{\bullet\}, u \in \Sigma^{k-1} \}$
 
- - The colors :: are reflecting wether a vertex is ``endemic'' to one vector:
+ - The colors :: are reflecting whether a vertex is ``endemic'' to one vector:
 
    - a red vertex is endemic to $Z$,
    - a blue vertex is endemic to $Z'$, and
