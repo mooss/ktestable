@@ -352,6 +352,11 @@ set()
 
 * Efficient algorithm
 
+The efficient algorithm presented in the paper creates one language per example and applies a hierarchical clustering algorithm to merge the languages two by two, if they are compatible.
+
+In this part, we will first see how to find out if two languages are compatible (/i.e./ if their union is consistent).
+We will then see how the nearest-neighbor algorithm can produce a dendrogram, using the distance previously defined.
+
 ** Union consistency definition
 
 Before learning the union of languages, we need to ensure the union consistency between two \(k\)-test vectors $Z$ and $Z'$, /i.e./ the fact that the union of their languages should be the languages and their union.
@@ -373,6 +378,7 @@ We will call this graph the consistency graph, and there are three aspects to it
                 $E = \{(au, ub) \in V \times V \vert a, b \in \Sigma \cup \{\bullet\}, u \in \Sigma^{k-1} \}$
 
  - The colors :: are reflecting wether a vertex is ``endemic'' to one vector:
+
    - a red vertex is endemic to $Z$,
    - a blue vertex is endemic to $Z'$, and
    - a white vertex is endemic to none.
