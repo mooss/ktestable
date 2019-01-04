@@ -537,20 +537,9 @@ return False
 
 ** Efficient algorithm implementation
 
-#+name: Compute distance matrix
-#+BEGIN_SRC ipython :exports none
-distance_matrix = np.zeros((len(examples),) * 2, dtype=int)
-for left, right in combinations(range(len(examples)), 2):
-    distance_matrix[left, right] = examples[left].distance(examples[right])
-    distance_matrix[right, left] = distance_matrix[left, right]
-#+END_SRC
-
 #+name: learnktest
 #+BEGIN_SRC ipython :eval no-export :results output :noweb yes :wrap example
-from itertools import combinations
 from collections import namedtuple
-from operator import attrgetter
-import numpy as np
 
 def learn_ktest_union(examples, k):
     examples = [ktestable.from_example(ex, k) for ex in examples]
@@ -563,7 +552,7 @@ def learn_ktest_union(examples, k):
         neighbours = []
         for j in range(i + 1, len(examples)):
             neighbours.append(neighbour(dist=examples[i].distance(examples[j]), index=j))
-            neighbours.sort(key=attrgetter('dist'))
+            neighbours.sort()
         distance_chain.append(distance_link(neighbours=neighbours, index=i))
 
     def result():
@@ -616,22 +605,12 @@ def learn_ktest_union(examples, k):
 paper_dataset = ['baba', 'abba', 'abcabc', 'cbacba',
                  'abbbba', 'cbacbacba', 'abbba', 'babababc']
 res = learn_ktest_union(paper_dataset, 3)
-print(res)
-
-# instanciated = [ktestable.from_example(ex, 3) for ex in paper_dataset]
-# from itertools import product
-
-# print(list(product(range(len(instanciated)))))
-# matrix = np.zeros((len(instanciated),) * 2, dtype=bool)
-# for left in range(len(instanciated)):
-#     for right in range(len(instanciated)):
-#         matrix[left, right] = instanciated[left].is_union_consistent_with(instanciated[right])
-# print(matrix)
+print(list(map(lambda x: x[1], res)))
 #+END_SRC
 
 #+RESULTS: learnktest
 #+BEGIN_example
-[(<__main__.ktestable object at 0x7f33996f2a90>, 0), (<__main__.ktestable object at 0x7f3391a9ec88>, 7), (<__main__.ktestable object at 0x7f33996f2da0>, ((1, 4), 6)), (<__main__.ktestable object at 0x7f33996f22b0>, ((3, 5), 2))]
+[0, 7, ((1, 4), 6), ((3, 5), 2)]
 #+END_example
 
 #+begin_src ipython :eval no-export :results output :noweb yes :exports none
