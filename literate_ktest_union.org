@@ -530,9 +530,7 @@ Finally, we only have to check if red vertices are reachable to blue vertices an
 
 #+name: Paths analysis
 #+BEGIN_SRC ipython
-if red_reachable.isdisjoint(blues) and blue_reachable.isdisjoint(reds):
-    return True
-return False
+return red_reachable.isdisjoint(blues) and blue_reachable.isdisjoint(reds)
 #+END_SRC
 
 ** Distance chain algorithm
