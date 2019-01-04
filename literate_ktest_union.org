@@ -308,7 +308,7 @@ We use this function to create a factory method for the =ktestable= class.
 #+BEGIN_SRC ipython
 @classmethod
 def from_example(cls, example, k):
-    return cls(*ktest_tuple_from_example(example, k))
+    return cls(*ktest_tuple(example, k))
 #+END_SRC
 
 
@@ -534,6 +534,119 @@ if red_reachable.isdisjoint(blues) and blue_reachable.isdisjoint(reds):
     return True
 return False
 #+END_SRC
+
+** Efficient algorithm implementation
+
+#+name: Compute distance matrix
+#+BEGIN_SRC ipython :exports none
+distance_matrix = np.zeros((len(examples),) * 2, dtype=int)
+for left, right in combinations(range(len(examples)), 2):
+    distance_matrix[left, right] = examples[left].distance(examples[right])
+    distance_matrix[right, left] = distance_matrix[left, right]
+#+END_SRC
+
+#+name: learnktest
+#+BEGIN_SRC ipython :eval no-export :results output :noweb yes :wrap example
+from itertools import combinations
+from collections import namedtuple
+from operator import attrgetter
+import numpy as np
+
+def learn_ktest_union(examples, k):
+    examples = [ktestable.from_example(ex, k) for ex in examples]
+    indexes = list(range(len(examples)))
+
+    distance_link = namedtuple('d', 'neighbours index')
+    neighbour = namedtuple('n', 'dist index')
+    distance_chain = []
+    for i in range(1, len(examples) - 1):
+        neighbours = []
+        for j in range(i + 1, len(examples)):
+            neighbours.append(neighbour(dist=examples[i].distance(examples[j]), index=j))
+            neighbours.sort(key=attrgetter('dist'))
+        distance_chain.append(distance_link(neighbours=neighbours, index=i))
+
+    def result():
+        return list(filter(lambda x: x[0] is not None, zip(examples, indexes)))
+
+    while len(distance_chain) > 0:
+        #<<Find the closest mergeable states>>
+        while True:
+            i, (dist, j) = distance_chain[0].index, distance_chain[0].neighbours[0]
+
+            if examples[i].is_union_consistent_with(examples[j]):
+                break
+
+            del distance_chain[0].neighbours[0]
+            if len(distance_chain[0].neighbours) == 0:
+                del distance_chain[0]
+                if len(distance_chain) == 0:
+                    return result()
+            distance_chain.sort()
+
+        # i and j are mergeable
+        #<<Update data structures>>
+        indexes.append((indexes[i], indexes[j]))
+        examples.append(examples[i] | examples[j])
+        indexes[i] = indexes[j] = examples[i] = examples[j] = None
+
+        del distance_chain[0]
+        for k in range(len(distance_chain)):
+            if distance_chain[k].index == j:
+                del distance_chain[k]
+                break
+
+        for link in distance_chain:
+            for k in reversed(range(len(link.neighbours))):
+                if link.neighbours[k].index == i or link.neighbours[k].index == j:
+                    del link.neighbours[k]
+
+        neighbours = []
+        for k, example in enumerate(examples[:-1]):
+            if example is not None:
+                neighbours.append(neighbour(dist=examples[-1].distance(example), index=k))
+
+        neighbours.sort()
+        distance_chain.append(distance_link(neighbours=neighbours, index=len(examples) - 1))
+        distance_chain.sort()
+
+    return result()
+
+
+paper_dataset = ['baba', 'abba', 'abcabc', 'cbacba',
+                 'abbbba', 'cbacbacba', 'abbba', 'babababc']
+res = learn_ktest_union(paper_dataset, 3)
+print(res)
+
+# instanciated = [ktestable.from_example(ex, 3) for ex in paper_dataset]
+# from itertools import product
+
+# print(list(product(range(len(instanciated)))))
+# matrix = np.zeros((len(instanciated),) * 2, dtype=bool)
+# for left in range(len(instanciated)):
+#     for right in range(len(instanciated)):
+#         matrix[left, right] = instanciated[left].is_union_consistent_with(instanciated[right])
+# print(matrix)
+#+END_SRC
+
+#+RESULTS: learnktest
+#+BEGIN_example
+[(<__main__.ktestable object at 0x7f33996f2a90>, 0), (<__main__.ktestable object at 0x7f3391a9ec88>, 7), (<__main__.ktestable object at 0x7f33996f2da0>, ((1, 4), 6)), (<__main__.ktestable object at 0x7f33996f22b0>, ((3, 5), 2))]
+#+END_example
+
+#+begin_src ipython :eval no-export :results output :noweb yes :exports none
+try:
+    <<learnktest>>
+except Exception as e:
+    import traceback
+    import sys
+    traceback.print_exc(file=sys.stdout)
+#+end_src
+
+#+RESULTS:
+:RESULTS:
+[(<__main__.ktestable object at 0x7f33996f2588>, 0), (<__main__.ktestable object at 0x7f3391a9e2e8>, 7), (<__main__.ktestable object at 0x7f339a0c9710>, ((1, 4), 6)), (<__main__.ktestable object at 0x7f339a0c92b0>, ((3, 5), 2))]
+:END:
 
 ** Tests
 
