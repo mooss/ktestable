@@ -549,17 +549,7 @@ def learn_ktest_union(examples, k):
         <<Update ktest-index>>
         <<Cleanup distance chain>>
         <<Update distance chain>>
-
-paper_dataset = ['baba', 'abba', 'abcabc', 'cbacba',
-                 'abbbba', 'cbacbacba', 'abbba', 'babababc']
-res = learn_ktest_union(paper_dataset, 3)
-print(list(map(lambda x: x[1], res)))
 #+END_SRC
-
-#+RESULTS: learnktest
-#+BEGIN_example
-[0, 7, ((1, 4), 6), ((3, 5), 2)]
-#+END_example
 
 #+name: Initialiase data structures
 #+BEGIN_SRC ipython
@@ -643,9 +633,12 @@ except Exception as e:
 :END:
 
 ** Tests
+:PROPERTIES:
+:header-args:ipython: :tangle tangled_test.py
+:END:
 
 #+name: ktestable class extension
-#+BEGIN_SRC ipython :exports none :noweb yes :eval no-export :results silent
+#+BEGIN_SRC ipython :exports none :noweb yes :eval no-export :results silent :tangle tangled_ktestable.py
 import networkx as nx
 
 <<ktestable class>>
@@ -653,7 +646,14 @@ import networkx as nx
     <<Construct consistency graph>>
 
     <<Union consistency>>
+
+<<Distance chain learning>>
 #+END_SRC
+
+#+BEGIN_SRC ipython :exports none
+from tangled_ktestable import ktestable, learn_ktest_union
+#+END_SRC
+
 
 Some basic tests based on examples from the paper.
 
@@ -671,6 +671,11 @@ instances = {iden: ktestable(*params) for iden, params in examples.items()}
 print(instances['z5'].is_union_consistent_with(instances['z7']))
 print(instances['z3'].is_union_consistent_with(instances['z4']))
 print(instances['z3'].is_union_consistent_with(instances['z7']))
+
+paper_dataset = ['baba', 'abba', 'abcabc', 'cbacba',
+                 'abbbba', 'cbacbacba', 'abbba', 'babababc']
+res = learn_ktest_union(paper_dataset, 3)
+print(list(map(lambda x: x[1], res)))
 #+END_SRC
 
 #+RESULTS: Union consistency test
@@ -678,6 +683,7 @@ print(instances['z3'].is_union_consistent_with(instances['z7']))
 True
 True
 False
+[0, 7, ((1, 4), 6), ((3, 5), 2)]
 #+END_example
 
 * Sources
