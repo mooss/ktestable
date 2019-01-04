@@ -1,3 +1,4 @@
+from collections import namedtuple
 import networkx as nx
 
 def ktest_tuple(example, k):
@@ -131,8 +132,6 @@ class ktestable(object):
         blue_reachable = {neighbour for blue in blues for neighbour in closure.adj[blue]}
     
         return red_reachable.isdisjoint(blues) and blue_reachable.isdisjoint(reds)
-
-from collections import namedtuple
 
 def learn_ktest_union(examples, k):
     examples = [ktestable.from_example(ex, k) for ex in examples]

@@ -534,11 +534,13 @@ return red_reachable.isdisjoint(blues) and blue_reachable.isdisjoint(reds)
 #+END_SRC
 
 ** Distance chain algorithm
+We will use =namedtuple=:
+#+BEGIN_SRC ipython
+from collections import namedtuple
+#+END_SRC
 
 #+name: Distance chain learning
 #+BEGIN_SRC ipython :eval no-export :results output :noweb no-export :wrap example
-from collections import namedtuple
-
 def learn_ktest_union(examples, k):
     <<Initialiase data structures>>
 
@@ -637,6 +639,7 @@ except Exception as e:
 
 #+name: ktestable class extension
 #+BEGIN_SRC ipython :exports none :noweb yes :eval no-export :results silent :tangle tangled_ktestable.py
+from collections import namedtuple
 import networkx as nx
 
 <<ktestable class>>
