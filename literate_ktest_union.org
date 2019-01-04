@@ -423,7 +423,7 @@ We will call this graph the consistency graph, and there are three aspects to it
 
    - a red vertex is endemic to $Z$,
    - a blue vertex is endemic to $Z'$, and
-   - a white vertex is endemic to none.
+   - a white vertex is endemic to both.
 
 A vertex $v$ is endemic to a vector $X = \langle I, F, T, C \rangle$ compared to another vector $X' = \langle I', F', T', C' \rangle$ if it appears only in $X$. More formally, it is endemic if the following holds:
 \begin{equation*}
