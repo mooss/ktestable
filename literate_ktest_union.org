@@ -535,72 +535,20 @@ if red_reachable.isdisjoint(blues) and blue_reachable.isdisjoint(reds):
 return False
 #+END_SRC
 
-** Efficient algorithm implementation
+** Distance chain algorithm
 
-#+name: learnktest
-#+BEGIN_SRC ipython :eval no-export :results output :noweb yes :wrap example
+#+name: Distance chain learning
+#+BEGIN_SRC ipython :eval no-export :results output :noweb no-export :wrap example
 from collections import namedtuple
 
 def learn_ktest_union(examples, k):
-    examples = [ktestable.from_example(ex, k) for ex in examples]
-    indexes = list(range(len(examples)))
-
-    distance_link = namedtuple('d', 'neighbours index')
-    neighbour = namedtuple('n', 'dist index')
-    distance_chain = []
-    for i in range(1, len(examples) - 1):
-        neighbours = []
-        for j in range(i + 1, len(examples)):
-            neighbours.append(neighbour(dist=examples[i].distance(examples[j]), index=j))
-            neighbours.sort()
-        distance_chain.append(distance_link(neighbours=neighbours, index=i))
-
-    def result():
-        return list(filter(lambda x: x[0] is not None, zip(examples, indexes)))
+    <<Initialiase data structures>>
 
     while len(distance_chain) > 0:
-        #<<Find the closest mergeable states>>
-        while True:
-            i, (dist, j) = distance_chain[0].index, distance_chain[0].neighbours[0]
-
-            if examples[i].is_union_consistent_with(examples[j]):
-                break
-
-            del distance_chain[0].neighbours[0]
-            if len(distance_chain[0].neighbours) == 0:
-                del distance_chain[0]
-                if len(distance_chain) == 0:
-                    return result()
-            distance_chain.sort()
-
-        # i and j are mergeable
-        #<<Update data structures>>
-        indexes.append((indexes[i], indexes[j]))
-        examples.append(examples[i] | examples[j])
-        indexes[i] = indexes[j] = examples[i] = examples[j] = None
-
-        del distance_chain[0]
-        for k in range(len(distance_chain)):
-            if distance_chain[k].index == j:
-                del distance_chain[k]
-                break
-
-        for link in distance_chain:
-            for k in reversed(range(len(link.neighbours))):
-                if link.neighbours[k].index == i or link.neighbours[k].index == j:
-                    del link.neighbours[k]
-
-        neighbours = []
-        for k, example in enumerate(examples[:-1]):
-            if example is not None:
-                neighbours.append(neighbour(dist=examples[-1].distance(example), index=k))
-
-        neighbours.sort()
-        distance_chain.append(distance_link(neighbours=neighbours, index=len(examples) - 1))
-        distance_chain.sort()
-
-    return result()
-
+        <<Find the closest mergeable states>>
+        <<Update ktest-index>>
+        <<Cleanup distance chain>>
+        <<Update distance chain>>
 
 paper_dataset = ['baba', 'abba', 'abcabc', 'cbacba',
                  'abbbba', 'cbacbacba', 'abbba', 'babababc']
@@ -612,6 +560,73 @@ print(list(map(lambda x: x[1], res)))
 #+BEGIN_example
 [0, 7, ((1, 4), 6), ((3, 5), 2)]
 #+END_example
+
+#+name: Initialiase data structures
+#+BEGIN_SRC ipython
+examples = [ktestable.from_example(ex, k) for ex in examples]
+indexes = list(range(len(examples)))
+distance_link = namedtuple('d', 'neighbours index')
+neighbour = namedtuple('n', 'dist index')
+distance_chain = []
+for i in range(1, len(examples) - 1):
+    neighbours = []
+    for j in range(i + 1, len(examples)):
+        neighbours.append(neighbour(dist=examples[i].distance(examples[j]), index=j))
+        neighbours.sort()
+    distance_chain.append(distance_link(neighbours=neighbours, index=i))
+#+END_SRC
+
+#+name: Find the closest mergeable states
+#+BEGIN_SRC ipython
+while True:
+    i, (dist, j) = distance_chain[0].index, distance_chain[0].neighbours[0]
+
+    if examples[i].is_union_consistent_with(examples[j]):
+        break
+
+    del distance_chain[0].neighbours[0]
+    if len(distance_chain[0].neighbours) == 0:
+        del distance_chain[0]
+        if len(distance_chain) == 0:
+            return list(filter(
+                lambda x: x[0] is not None,
+                zip(examples, indexes)))
+    distance_chain.sort()
+#+END_SRC
+
+#+name: Update ktest-index
+#+BEGIN_SRC ipython
+indexes.append((indexes[i], indexes[j]))
+examples.append(examples[i] | examples[j])
+indexes[i] = indexes[j] = examples[i] = examples[j] = None
+#+END_SRC
+
+#+name: Cleanup distance chain
+#+BEGIN_SRC ipython
+del distance_chain[0]
+for k in range(len(distance_chain)):
+    if distance_chain[k].index == j:
+        del distance_chain[k]
+        break
+
+for link in distance_chain:
+    for k in reversed(range(len(link.neighbours))):
+        if link.neighbours[k].index == i or link.neighbours[k].index == j:
+            del link.neighbours[k]
+#+END_SRC
+
+#+name: Update distance chain
+#+BEGIN_SRC ipython
+neighbours = []
+for k, example in enumerate(examples[:-1]):
+    if example is not None:
+        neighbours.append(neighbour(dist=examples[-1].distance(example), index=k))
+
+neighbours.sort()
+distance_chain.append(distance_link(neighbours=neighbours, index=len(examples) - 1))
+distance_chain.sort()
+#+END_SRC
+
 
 #+begin_src ipython :eval no-export :results output :noweb yes :exports none
 try:
