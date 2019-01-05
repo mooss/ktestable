@@ -639,11 +639,11 @@ ktest_vectors.append(ktest_vectors[i] | ktest_vectors[j])
 indexes[i] = indexes[j] = ktest_vectors[i] = ktest_vectors[j] = None
 #+END_SRC
 
+*** Cleaning up the distance chain
 The cleanup is of particular interrest since it highlights both the strength of the algorithm as well as its weakness.
 The strength is that a big part of the distance chain can be quickly removed by discarding the links whose left point is =i= or =j=.
 The weakness is that we have to hunt for stray =i='s and =j='s in all the remaining distance links.
 
-*** Cleaning up the distance chain
 #+name: Distance chain cleanup
 #+BEGIN_SRC ipython
 del distance_chain[0]
