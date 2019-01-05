@@ -140,7 +140,7 @@ def learn_ktest_union(examples, k):
     neighbour = namedtuple('n', 'dist index')
     
     distance_chain = []
-    for i in range(1, len(ktest_vectors) - 1):
+    for i in range(0, len(ktest_vectors) - 1):
         neighbours = []
         for j in range(i + 1, len(ktest_vectors)):
             neighbours.append(neighbour(dist=ktest_vectors[i].distance(ktest_vectors[j]), index=j))
@@ -151,17 +151,17 @@ def learn_ktest_union(examples, k):
     while True:
         while True:
             i, (dist, j) = distance_chain[0].index, distance_chain[0].neighbours[0]
-        
             if ktest_vectors[i].is_union_consistent_with(ktest_vectors[j]):
                 break
-        
             del distance_chain[0].neighbours[0]
+        
             if len(distance_chain[0].neighbours) == 0:
                 del distance_chain[0]
                 if len(distance_chain) == 0:
                     return list(filter(
                         lambda x: x[0] is not None,
                         zip(ktest_vectors, indexes)))
+        
             distance_chain.sort()
 
         indexes.append((indexes[i], indexes[j]))
@@ -174,10 +174,13 @@ def learn_ktest_union(examples, k):
                 del distance_chain[k]
                 break
         
-        for link in distance_chain:
-            for k in reversed(range(len(link.neighbours))):
-                if link.neighbours[k].index == i or link.neighbours[k].index == j:
-                    del link.neighbours[k]
+        for k in reversed(range(len(distance_chain))):
+            link = distance_chain[k]
+            for l in reversed(range(len(link.neighbours))):
+                if link.neighbours[l].index == i or link.neighbours[l].index == j:
+                    del link.neighbours[l]
+                    if len(link.neighbours) == 0:
+                        del distance_chain[k]
 
         neighbours = []
         for k, ktest in enumerate(ktest_vectors[:-1]):

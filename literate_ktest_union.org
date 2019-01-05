@@ -576,11 +576,11 @@ def learn_ktest_union(examples, k):
     while True:
         <<Find the closest mergeable points>>
 
-        <<ktest-index update>>
+        <<Update ktest-index>>
 
-        <<Distance chain cleanup>>
+        <<Cleanup distance chain>>
 
-        <<Distance chain update>>
+        <<Update distance chain>>
 #+END_SRC
 
 *** Data structure initialisation
@@ -596,7 +596,7 @@ distance_link = namedtuple('d', 'neighbours index')
 neighbour = namedtuple('n', 'dist index')
 
 distance_chain = []
-for i in range(1, len(ktest_vectors) - 1):
+for i in range(0, len(ktest_vectors) - 1):
     neighbours = []
     for j in range(i + 1, len(ktest_vectors)):
         neighbours.append(neighbour(dist=ktest_vectors[i].distance(ktest_vectors[j]), index=j))
@@ -614,17 +614,17 @@ The exit point of the function is also here, the result is returned when the dis
 #+BEGIN_SRC ipython
 while True:
     i, (dist, j) = distance_chain[0].index, distance_chain[0].neighbours[0]
-
     if ktest_vectors[i].is_union_consistent_with(ktest_vectors[j]):
         break
-
     del distance_chain[0].neighbours[0]
+
     if len(distance_chain[0].neighbours) == 0:
         del distance_chain[0]
         if len(distance_chain) == 0:
             return list(filter(
                 lambda x: x[0] is not None,
                 zip(ktest_vectors, indexes)))
+
     distance_chain.sort()
 #+END_SRC
 
@@ -632,7 +632,7 @@ while True:
 As a result of the previous block, =i= and =j= are now the closest mergeable states.
 We record the merge into the index and the union into =ktest_vectors=, and we override the original vectors and indexes.
 
-#+name: ktest-index update
+#+name: Update ktest-index
 #+BEGIN_SRC ipython
 indexes.append((indexes[i], indexes[j]))
 ktest_vectors.append(ktest_vectors[i] | ktest_vectors[j])
@@ -644,7 +644,9 @@ The cleanup is of particular interrest since it highlights both the strength of 
 The strength is that a big part of the distance chain can be quickly removed by discarding the links whose left point is =i= or =j=.
 The weakness is that we have to hunt for stray =i='s and =j='s in all the remaining distance links.
 
-#+name: Distance chain cleanup
+We iterate in reverse when removing individual edges in order to be able to remove elements while we are iterating, otherwise we would end up removing the wrong elements and mess everything up.
+
+#+name: Cleanup distance chain
 #+BEGIN_SRC ipython
 del distance_chain[0]
 for k in range(len(distance_chain)):
@@ -652,17 +654,20 @@ for k in range(len(distance_chain)):
         del distance_chain[k]
         break
 
-for link in distance_chain:
-    for k in reversed(range(len(link.neighbours))):
-        if link.neighbours[k].index == i or link.neighbours[k].index == j:
-            del link.neighbours[k]
+for k in reversed(range(len(distance_chain))):
+    link = distance_chain[k]
+    for l in reversed(range(len(link.neighbours))):
+        if link.neighbours[l].index == i or link.neighbours[l].index == j:
+            del link.neighbours[l]
+            if len(link.neighbours) == 0:
+                del distance_chain[k]
 #+END_SRC
 
 *** Updating the distance chain
 Finally, we construct the distance link corresponding to the \(k\)-test union that was just created all the while making sure that the distance chain is still sorted.
-It should be more efficient to simply insert the new distance link at its place in the distant chain rather than sorting the list all over again, but we wanted to put the emphasis on readability.
+It would be more efficient to simply insert the new distance link at its place in the distant chain rather than sorting the list all over again, but we wanted to put the emphasis on readability.
 
-#+name: Distance chain update
+#+name: Update distance chain
 #+BEGIN_SRC ipython
 neighbours = []
 for k, ktest in enumerate(ktest_vectors[:-1]):
@@ -691,7 +696,7 @@ except Exception as e:
 
 ** Tests
 :PROPERTIES:
-:header-args:ipython: :tangle tangled_test.py
+:header-args:ipython: :tangle tangled_test.py :session ktestable
 :END:
 
 #+name: ktestable class extension
@@ -716,7 +721,7 @@ from tangled_ktestable import ktestable, learn_ktest_union
 Some basic tests based on examples from the paper.
 
 #+name: Union consistency test
-#+BEGIN_SRC ipython :exports both :eval no-export :results output :wrap example
+#+BEGIN_SRC ipython :exports both :eval no-export :results output :wrap example :noweb yes
 examples = {
     'z3': ({'ab'}, {'bc'}, {'abc', 'bca', 'cab'}, {}),
     'z4': ({'cb'}, {'ba'}, {'cba', 'bac', 'acb'}, {}),
@@ -730,6 +735,8 @@ print(instances['z5'].is_union_consistent_with(instances['z7']))
 print(instances['z3'].is_union_consistent_with(instances['z4']))
 print(instances['z3'].is_union_consistent_with(instances['z7']))
 
+print()
+print(ktestable.from_example('baba', 3).is_union_consistent_with(ktestable.from_example('babababc', 3)))
 paper_dataset = ['baba', 'abba', 'abcabc', 'cbacba',
                  'abbbba', 'cbacbacba', 'abbba', 'babababc']
 res = learn_ktest_union(paper_dataset, 3)
@@ -741,7 +748,9 @@ print(list(map(lambda x: x[1], res)))
 True
 True
 False
-[0, 7, ((4, 6), 1), ((3, 5), 2)]
+
+True
+[((4, 6), 1), (0, 7), ((3, 5), 2)]
 #+END_example
 
 * Sources

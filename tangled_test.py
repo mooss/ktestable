@@ -13,6 +13,8 @@ print(instances['z5'].is_union_consistent_with(instances['z7']))
 print(instances['z3'].is_union_consistent_with(instances['z4']))
 print(instances['z3'].is_union_consistent_with(instances['z7']))
 
+print()
+print(ktestable.from_example('baba', 3).is_union_consistent_with(ktestable.from_example('babababc', 3)))
 paper_dataset = ['baba', 'abba', 'abcabc', 'cbacba',
                  'abbbba', 'cbacbacba', 'abbba', 'babababc']
 res = learn_ktest_union(paper_dataset, 3)
