@@ -397,7 +397,7 @@ set()
 The efficient algorithm presented in the paper creates one language per example and applies a hierarchical clustering algorithm to merge the languages two by two, if they are compatible.
 
 In this part, we will first see how to find out if two languages are compatible (/i.e./ if their union is consistent).
-We will then see how the nearest-neighbor algorithm can produce a dendrogram, using the distance previously defined.
+We will then present an alternative to the nearest-neighbour algorithm to produce a union of \(k\)-testable languages.
 
 ** Union consistency definition
 
@@ -544,14 +544,14 @@ The core idea is to provide an easy access to nearest-neighbours by storing edge
 First, some vocabulary:
  - A point :: is here a k-test vector.
  - An edge :: is a couple of distinct points, with their distance.
- - A distance link :: is a way to store edges common to to one particular point.
+ - A distance link :: is a way to store some edges common to to one particular point, the left point.
  - A distance chain :: is a list of distance links without edge duplication.
 
 All distance links are sorted according to distance and the distance chain is sorted according to the distance of the closest points, /i.e./ the first point of each link.
 
 There are two main intuitions:
  - When the two closest points are not mergeable (because they are not union compatible), it is easy to discard them and find the next two closest points.
- - After the two closest points are found, a lot of now useless edges can be discarded by throwing away the distance link corresponding to those points.
+ - After the two closest points are found, a lot of now useless edges can be discarded by throwing away the distance link whose left point is one of them.
 
 A big drawback is that there might remain points and the only way to remove them is to go through all existing edges, thus removing a lot of the appeal.
 This could be alleviated by adding an index keeping track of all edges a given node belongs to.
@@ -574,14 +574,19 @@ def learn_ktest_union(examples, k):
     <<Initialiase data structures>>
 
     while True:
-        <<Find the closest mergeable states>>
+        <<Find the closest mergeable points>>
 
-        <<Update ktest-index>>
+        <<ktest-index update>>
 
-        <<Cleanup distance chain>>
+        <<Distance chain cleanup>>
 
-        <<Update distance chain>>
+        <<Distance chain update>>
 #+END_SRC
+
+*** Data structure initialisation
+Here, we instanciate the \(k\)-test vectors from the given examples, we create an index structure whose role is to record how the unions are made (for now it's just the indexes of the initial \(k\)-test vectors).
+We also construct the initial distance chain and we make sure it is sorted.
+We chose links rather that array to support our data structures, because they have a better support in python.
 
 #+name: Initialiase data structures
 #+BEGIN_SRC ipython
@@ -600,7 +605,12 @@ for i in range(1, len(ktest_vectors) - 1):
 distance_chain.sort()
 #+END_SRC
 
-#+name: Find the closest mergeable states
+*** Finding the closest mergeable points
+If the closest points are mergeable, we merge them.
+Otherwise, they are discarded and we keep the distance chain sorted so that at the next iteration, the next two closest points are at the top of the distance chain.
+The exit point of the function is also here, the result is returned when the distance chain has been exhausted.
+
+#+name: Find the closest mergeable points
 #+BEGIN_SRC ipython
 while True:
     i, (dist, j) = distance_chain[0].index, distance_chain[0].neighbours[0]
@@ -618,14 +628,23 @@ while True:
     distance_chain.sort()
 #+END_SRC
 
-#+name: Update ktest-index
+*** Updating the ktest-index
+As a result of the previous block, =i= and =j= are now the closest mergeable states.
+We record the merge into the index and the union into =ktest_vectors=, and we override the original vectors and indexes.
+
+#+name: ktest-index update
 #+BEGIN_SRC ipython
 indexes.append((indexes[i], indexes[j]))
 ktest_vectors.append(ktest_vectors[i] | ktest_vectors[j])
 indexes[i] = indexes[j] = ktest_vectors[i] = ktest_vectors[j] = None
 #+END_SRC
 
-#+name: Cleanup distance chain
+The cleanup is of particular interrest since it highlights both the strength of the algorithm as well as its weakness.
+The strength is that a big part of the distance chain can be quickly removed by discarding the links whose left point is =i= or =j=.
+The weakness is that we have to hunt for stray =i='s and =j='s in all the remaining distance links.
+
+*** Cleaning up the distance chain
+#+name: Distance chain cleanup
 #+BEGIN_SRC ipython
 del distance_chain[0]
 for k in range(len(distance_chain)):
@@ -639,7 +658,11 @@ for link in distance_chain:
             del link.neighbours[k]
 #+END_SRC
 
-#+name: Update distance chain
+*** Updating the distance chain
+Finally, we construct the distance link corresponding to the \(k\)-test union that was just created all the while making sure that the distance chain is still sorted.
+It should be more efficient to simply insert the new distance link at its place in the distant chain rather than sorting the list all over again, but we wanted to put the emphasis on readability.
+
+#+name: Distance chain update
 #+BEGIN_SRC ipython
 neighbours = []
 for k, ktest in enumerate(ktest_vectors[:-1]):
@@ -718,7 +741,7 @@ print(list(map(lambda x: x[1], res)))
 True
 True
 False
-[0, 7, ((1, 4), 6), ((3, 5), 2)]
+[0, 7, ((4, 6), 1), ((3, 5), 2)]
 #+END_example
 
 * Sources
