@@ -534,20 +534,52 @@ return red_reachable.isdisjoint(blues) and blue_reachable.isdisjoint(reds)
 #+END_SRC
 
 ** Distance chain algorithm
-We will use =namedtuple=:
+
+Because we have had difficulties understanding the nearest-neighbour chain algorithm, we decided to roll our own algorithm to cluster \(k\)-test vectors.
+We dubbed it the distance chain algorithm.
+It is almost certainly less efficient than the alternative.
+
+The core idea is to provide an easy access to nearest-neighbours by storing edges in a pre-sorted data structure, the ``distance chain''.
+
+First, some vocabulary:
+ - A point :: is here a k-test vector.
+ - An edge :: is a couple of distinct points, with their distance.
+ - A distance link :: is a way to store edges common to to one particular point.
+ - A distance chain :: is a list of distance links without edge duplication.
+
+All distance links are sorted according to distance and the distance chain is sorted according to the distance of the closest points, /i.e./ the first point of each link.
+
+There are two main intuitions:
+ - When the two closest points are not mergeable (because they are not union compatible), it is easy to discard them and find the next two closest points.
+ - After the two closest points are found, a lot of now useless edges can be discarded by throwing away the distance link corresponding to those points.
+
+A big drawback is that there might remain points and the only way to remove them is to go through all existing edges, thus removing a lot of the appeal.
+This could be alleviated by adding an index keeping track of all edges a given node belongs to.
+The implication of such an approach both in time and space complexity remains to be seen.
+
+One parameter which could influence the efficiency of our approach is whether lists or arrays are used to store the distance chain et the neighbours of a distance link.
+
+Our implementation uses =namedtuple=, exported like this:
 #+BEGIN_SRC ipython
 from collections import namedtuple
 #+END_SRC
+
+We have separated our implementation into five parts which will be explained one after the other.
+The first part is only about the initialisation of data structures, among which sits the distance chain (=distance_chain=).
+The other parts are contained in a =while= loop and their goal is to deplete the distance chain.
 
 #+name: Distance chain learning
 #+BEGIN_SRC ipython :eval no-export :results output :noweb no-export :wrap example
 def learn_ktest_union(examples, k):
     <<Initialiase data structures>>
 
-    while len(distance_chain) > 0:
+    while True:
         <<Find the closest mergeable states>>
+
         <<Update ktest-index>>
+
         <<Cleanup distance chain>>
+
         <<Update distance chain>>
 #+END_SRC
 

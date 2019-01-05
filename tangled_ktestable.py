@@ -146,7 +146,7 @@ def learn_ktest_union(examples, k):
             neighbours.sort()
         distance_chain.append(distance_link(neighbours=neighbours, index=i))
 
-    while len(distance_chain) > 0:
+    while True:
         while True:
             i, (dist, j) = distance_chain[0].index, distance_chain[0].neighbours[0]
         
@@ -161,9 +161,11 @@ def learn_ktest_union(examples, k):
                         lambda x: x[0] is not None,
                         zip(examples, indexes)))
             distance_chain.sort()
+
         indexes.append((indexes[i], indexes[j]))
         examples.append(examples[i] | examples[j])
         indexes[i] = indexes[j] = examples[i] = examples[j] = None
+
         del distance_chain[0]
         for k in range(len(distance_chain)):
             if distance_chain[k].index == j:
@@ -174,6 +176,7 @@ def learn_ktest_union(examples, k):
             for k in reversed(range(len(link.neighbours))):
                 if link.neighbours[k].index == i or link.neighbours[k].index == j:
                     del link.neighbours[k]
+
         neighbours = []
         for k, example in enumerate(examples[:-1]):
             if example is not None:
