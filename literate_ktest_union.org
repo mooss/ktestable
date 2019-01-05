@@ -596,6 +596,7 @@ for i in range(1, len(examples) - 1):
         neighbours.append(neighbour(dist=examples[i].distance(examples[j]), index=j))
         neighbours.sort()
     distance_chain.append(distance_link(neighbours=neighbours, index=i))
+distance_chain.sort()
 #+END_SRC
 
 #+name: Find the closest mergeable states

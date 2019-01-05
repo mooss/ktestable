@@ -145,6 +145,7 @@ def learn_ktest_union(examples, k):
             neighbours.append(neighbour(dist=examples[i].distance(examples[j]), index=j))
             neighbours.sort()
         distance_chain.append(distance_link(neighbours=neighbours, index=i))
+    distance_chain.sort()
 
     while True:
         while True:
