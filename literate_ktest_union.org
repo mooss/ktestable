@@ -308,7 +308,7 @@ We use this function to create a factory method for the =ktestable= class.
 #+BEGIN_SRC ipython
 @classmethod
 def from_example(cls, example, k):
-    return cls(*ktest_tuple(example, k))
+    return cls(*ktest_tuple(example, k), k)
 #+END_SRC
 
 

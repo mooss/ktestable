@@ -26,7 +26,7 @@ class ktestable(object):
 
     @classmethod
     def from_example(cls, example, k):
-        return cls(*ktest_tuple(example, k))
+        return cls(*ktest_tuple(example, k), k)
 
     def ensure_correct_definition(self):
         def same_length(collection, reference_length):
