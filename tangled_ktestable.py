@@ -164,9 +164,6 @@ def learn_ktest_union(examples, k):
                 if len(distance_chain) == 0:
                     return [(ktest_vectors[x], indexes[x])
                             for x, merged in enumerate(already_merged) if not merged]
-                    return list(filter(
-                        lambda x: x[0] is not None,
-                        zip(ktest_vectors, indexes)))
         
             distance_chain.sort()
 
@@ -174,7 +171,6 @@ def learn_ktest_union(examples, k):
         ktest_vectors.append(ktest_vectors[i] | ktest_vectors[j])
         already_merged.append(False)
         already_merged[i] = already_merged[j] = True
-        # indexes[i] = indexes[j] = ktest_vectors[i] = ktest_vectors[j] = None
 
         del distance_chain[0]
         for k in range(len(distance_chain)):

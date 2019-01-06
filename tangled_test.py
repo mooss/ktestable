@@ -15,9 +15,11 @@ print(instances['z3'].is_union_consistent_with(instances['z7']))
 
 print()
 print(ktestable.from_example('baba', 3).is_union_consistent_with(ktestable.from_example('babababc', 3)))
-paper_dataset = ['baba', 'abba', 'abcabc', 'cbacba',
-                 'abbbba', 'cbacbacba', 'abbba', 'babababc']
-res = learn_ktest_union(paper_dataset, 3)
+
+with open('dataset/paper.txt') as datasetfile:
+    dataset = [line.rstrip('\n') for line in datasetfile]
+
+res = learn_ktest_union(dataset, 3)
 clusters = list(map(lambda x: x[1], res))
 print(clusters)
 print(len(clusters))
