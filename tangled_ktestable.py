@@ -146,7 +146,7 @@ def learn_ktest_union(examples, k):
         neighbours = []
         for j in range(i + 1, len(ktest_vectors)):
             neighbours.append(neighbour(dist=ktest_vectors[i].distance(ktest_vectors[j]), index=j))
-            neighbours.sort()
+        neighbours.sort()
         distance_chain.append(distance_link(neighbours=neighbours, index=i))
     distance_chain.sort()
 

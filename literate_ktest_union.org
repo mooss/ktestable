@@ -526,7 +526,7 @@ red_reachable = {neighbour for red in reds for neighbour in closure.adj[red]}
 blue_reachable = {neighbour for blue in blues for neighbour in closure.adj[blue]}
 #+END_SRC
 
-Finally, we only have to check if red vertices are reachable to blue vertices and vice versa.
+Finally, we only have to check if red vertices are reachable from blue vertices and vice versa.
 
 #+name: Paths analysis
 #+BEGIN_SRC ipython
@@ -603,7 +603,7 @@ for i in range(0, len(ktest_vectors) - 1):
     neighbours = []
     for j in range(i + 1, len(ktest_vectors)):
         neighbours.append(neighbour(dist=ktest_vectors[i].distance(ktest_vectors[j]), index=j))
-        neighbours.sort()
+    neighbours.sort()
     distance_chain.append(distance_link(neighbours=neighbours, index=i))
 distance_chain.sort()
 #+END_SRC
