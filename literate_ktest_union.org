@@ -544,7 +544,7 @@ The core idea is to provide an easy access to nearest-neighbours by storing edge
 First, some vocabulary:
  - A point :: is here a k-test vector.
  - An edge :: is a couple of distinct points, with their distance.
- - A distance link :: is a way to store some edges common to to one particular point, the left point.
+ - A distance link :: is a way to store some edges common to to one particular point, the left point, the other points are called the right points.
  - A distance chain :: is a list of distance links without edge duplication.
 
 All distance links are sorted according to distance and the distance chain is sorted according to the distance of the closest points, /i.e./ the first point of each link.
@@ -553,11 +553,8 @@ There are two main intuitions:
  - When the two closest points are not mergeable (because they are not union compatible), it is easy to discard them and find the next two closest points.
  - After the two closest points are found, a lot of now useless edges can be discarded by throwing away the distance link whose left point is one of them.
 
-A big drawback is that there might remain points and the only way to remove them is to go through all existing edges, thus removing a lot of the appeal.
-This could be alleviated by adding an index keeping track of all edges a given node belongs to.
-The implication of such an approach both in time and space complexity remains to be seen.
-
-One parameter which could influence the efficiency of our approach is whether lists or arrays are used to store the distance chain et the neighbours of a distance link.
+A drawback is that there will remain edges to throw away, those whose right point was one of the two merged points.
+Our solution is to keep track of the points that were already merged and to discard them when they come up.
 
 Our implementation uses =namedtuple=, exported like this:
 #+BEGIN_SRC ipython
@@ -565,8 +562,8 @@ from collections import namedtuple
 #+END_SRC
 
 We have separated our implementation into five parts which will be explained one after the other.
-The first part is only about the initialisation of data structures, among which sits the distance chain (=distance_chain=).
-The other parts are contained in a =while= loop and their goal is to deplete the distance chain.
+The first part is only about the initialisation of data structures, among which sits the main one, the distance chain.
+The other parts are contained in a =while= loop and their goal is to deplete this distance chain.
 
 #+name: Distance chain learning
 #+BEGIN_SRC ipython :eval no-export :results output :noweb no-export :wrap example
@@ -576,26 +573,32 @@ def learn_ktest_union(examples, k):
     while True:
         <<Find the closest mergeable points>>
 
-        <<Update ktest-index>>
+        <<Update merge record>>
 
         <<Cleanup distance chain>>
 
         <<Update distance chain>>
 #+END_SRC
 
-*** Data structure initialisation
-Here, we instanciate the \(k\)-test vectors from the given examples, we create an index structure whose role is to record how the unions are made (for now it's just the indexes of the initial \(k\)-test vectors).
+*** Initialising the data structures
+There are three variables whose role is to record the progression of the algorithm :
+ - =ktest_vectors= contains the initial vectors created from the examples and will be updated with the new merged vectors.
+ - =indexes= keeps tracks of all the merges that happened.
+ - =already_merged= records whether a vectors was already merged with another.
+
 We also construct the initial distance chain and we make sure it is sorted.
-We chose links rather that array to support our data structures, because they have a better support in python.
+# We chose links rather that array to support our data structures, because they have a better support in python.
 
 #+name: Initialiase data structures
 #+BEGIN_SRC ipython
 ktest_vectors = [ktestable.from_example(ex, k) for ex in examples]
 indexes = list(range(len(ktest_vectors)))
+already_merged = [False] * len(ktest_vectors)
+
 distance_link = namedtuple('d', 'neighbours index')
 neighbour = namedtuple('n', 'dist index')
-
 distance_chain = []
+
 for i in range(0, len(ktest_vectors) - 1):
     neighbours = []
     for j in range(i + 1, len(ktest_vectors)):
@@ -606,45 +609,45 @@ distance_chain.sort()
 #+END_SRC
 
 *** Finding the closest mergeable points
-If the closest points are mergeable, we merge them.
-Otherwise, they are discarded and we keep the distance chain sorted so that at the next iteration, the next two closest points are at the top of the distance chain.
+The idea here is to loop until the closest mergeable points are found.
+When the closest points are not mergeable (because the right point was already merged or because they are not union consistent), we throw the edge away and try the next one.
+
+We make sure that the distance chain stays sorted and we remove empty links.
 The exit point of the function is also here, the result is returned when the distance chain has been exhausted.
 
 #+name: Find the closest mergeable points
 #+BEGIN_SRC ipython
+print(len(distance_chain))
 while True:
     i, (dist, j) = distance_chain[0].index, distance_chain[0].neighbours[0]
-    if ktest_vectors[i].is_union_consistent_with(ktest_vectors[j]):
+    if not already_merged[j] and\
+       ktest_vectors[i].is_union_consistent_with(ktest_vectors[j]):
         break
-    del distance_chain[0].neighbours[0]
 
+    del distance_chain[0].neighbours[0]
     if len(distance_chain[0].neighbours) == 0:
         del distance_chain[0]
         if len(distance_chain) == 0:
-            return list(filter(
-                lambda x: x[0] is not None,
-                zip(ktest_vectors, indexes)))
+            return [(ktest_vectors[x], indexes[x])
+                    for x, merged in enumerate(already_merged) if not merged]
 
     distance_chain.sort()
 #+END_SRC
 
-*** Updating the ktest-index
+*** Updating the merge record
 As a result of the previous block, =i= and =j= are now the closest mergeable states.
-We record the merge into the index and the union into =ktest_vectors=, and we override the original vectors and indexes.
+We record the structure of the merge into =indexes=, the union into =ktest_vectors=, and the merge into =already_merged=.
 
-#+name: Update ktest-index
+#+name: Update merge record
 #+BEGIN_SRC ipython
 indexes.append((indexes[i], indexes[j]))
 ktest_vectors.append(ktest_vectors[i] | ktest_vectors[j])
-indexes[i] = indexes[j] = ktest_vectors[i] = ktest_vectors[j] = None
+already_merged.append(False)
+already_merged[i] = already_merged[j] = True
 #+END_SRC
 
 *** Cleaning up the distance chain
-The cleanup is of particular interrest since it highlights both the strength of the algorithm as well as its weakness.
-The strength is that a big part of the distance chain can be quickly removed by discarding the links whose left point is =i= or =j=.
-The weakness is that we have to hunt for stray =i='s and =j='s in all the remaining distance links.
-
-We iterate in reverse when removing individual edges in order to be able to remove elements while we are iterating, otherwise we would end up removing the wrong elements and mess everything up.
+The cleanup highlights the advantage of the algorithm, the fact that a chunk of the distance chain can be quickly removed by discarding the links whose left point is =i= or =j=.
 
 #+name: Cleanup distance chain
 #+BEGIN_SRC ipython
@@ -653,14 +656,6 @@ for k in range(len(distance_chain)):
     if distance_chain[k].index == j:
         del distance_chain[k]
         break
-
-for k in reversed(range(len(distance_chain))):
-    link = distance_chain[k]
-    for l in reversed(range(len(link.neighbours))):
-        if link.neighbours[l].index == i or link.neighbours[l].index == j:
-            del link.neighbours[l]
-            if len(link.neighbours) == 0:
-                del distance_chain[k]
 #+END_SRC
 
 *** Updating the distance chain
@@ -670,9 +665,9 @@ It would be more efficient to simply insert the new distance link at its place i
 #+name: Update distance chain
 #+BEGIN_SRC ipython
 neighbours = []
-for k, ktest in enumerate(ktest_vectors[:-1]):
-    if ktest is not None:
-        neighbours.append(neighbour(dist=ktest_vectors[-1].distance(ktest), index=k))
+for k, merged in enumerate(already_merged[:-1]):
+    if not merged:
+        neighbours.append(neighbour(dist=ktest_vectors[-1].distance(ktest_vectors[k]), index=k))
 
 neighbours.sort()
 distance_chain.append(distance_link(neighbours=neighbours, index=len(ktest_vectors) - 1))
@@ -740,7 +735,9 @@ print(ktestable.from_example('baba', 3).is_union_consistent_with(ktestable.from_
 paper_dataset = ['baba', 'abba', 'abcabc', 'cbacba',
                  'abbbba', 'cbacbacba', 'abbba', 'babababc']
 res = learn_ktest_union(paper_dataset, 3)
-print(list(map(lambda x: x[1], res)))
+clusters = list(map(lambda x: x[1], res))
+print(clusters)
+print(len(clusters))
 #+END_SRC
 
 #+RESULTS: Union consistency test
@@ -750,7 +747,14 @@ True
 False
 
 True
+7
+6
+5
+4
+4
+2
 [((4, 6), 1), (0, 7), ((3, 5), 2)]
+3
 #+END_example
 
 * Sources
