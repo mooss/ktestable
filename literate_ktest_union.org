@@ -596,13 +596,12 @@ indexes = list(range(len(ktest_vectors)))
 already_merged = [False] * len(ktest_vectors)
 
 distance_link = namedtuple('d', 'neighbours left')
-neighbour = namedtuple('n', 'dist right')
 distance_chain = []
 
 for left in range(0, len(ktest_vectors) - 1):
     neighbours = []
     for right in range(left + 1, len(ktest_vectors)):
-        neighbours.append(neighbour(dist=ktest_vectors[left].distance(ktest_vectors[right]), right=right))
+        neighbours.append((ktest_vectors[left].distance(ktest_vectors[right]), right))
     neighbours.sort()
     distance_chain.append(distance_link(neighbours=neighbours, left=left))
 distance_chain.sort()
@@ -667,7 +666,7 @@ It would be more efficient to simply insert the new distance link at its place i
 neighbours = []
 for right, merged in enumerate(already_merged[:-1]):
     if not merged:
-        neighbours.append(neighbour(dist=ktest_vectors[-1].distance(ktest_vectors[right]), right=right))
+        neighbours.append((ktest_vectors[-1].distance(ktest_vectors[right]), right))
 
 neighbours.sort()
 distance_chain.append(distance_link(neighbours=neighbours, left=len(ktest_vectors) - 1))
