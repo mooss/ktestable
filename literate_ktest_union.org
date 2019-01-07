@@ -595,16 +595,16 @@ ktest_vectors = [ktestable.from_example(ex, k) for ex in examples]
 indexes = list(range(len(ktest_vectors)))
 already_merged = [False] * len(ktest_vectors)
 
-distance_link = namedtuple('d', 'neighbours index')
-neighbour = namedtuple('n', 'dist index')
+distance_link = namedtuple('d', 'neighbours left')
+neighbour = namedtuple('n', 'dist right')
 distance_chain = []
 
-for i in range(0, len(ktest_vectors) - 1):
+for left in range(0, len(ktest_vectors) - 1):
     neighbours = []
-    for j in range(i + 1, len(ktest_vectors)):
-        neighbours.append(neighbour(dist=ktest_vectors[i].distance(ktest_vectors[j]), index=j))
+    for right in range(left + 1, len(ktest_vectors)):
+        neighbours.append(neighbour(dist=ktest_vectors[left].distance(ktest_vectors[right]), right=right))
     neighbours.sort()
-    distance_chain.append(distance_link(neighbours=neighbours, index=i))
+    distance_chain.append(distance_link(neighbours=neighbours, left=left))
 distance_chain.sort()
 #+END_SRC
 
@@ -619,9 +619,9 @@ The exit point of the function is also here, the result is returned when the dis
 #+BEGIN_SRC ipython
 print(len(distance_chain))
 while True:
-    i, (dist, j) = distance_chain[0].index, distance_chain[0].neighbours[0]
-    if not already_merged[j] and\
-       ktest_vectors[i].is_union_consistent_with(ktest_vectors[j]):
+    left, (dist, right) = distance_chain[0].left, distance_chain[0].neighbours[0]
+    if not already_merged[right] and\
+       ktest_vectors[left].is_union_consistent_with(ktest_vectors[right]):
         break
 
     del distance_chain[0].neighbours[0]
@@ -635,26 +635,26 @@ while True:
 #+END_SRC
 
 *** Updating the merge record
-As a result of the previous block, =i= and =j= are now the closest mergeable states.
+As a result of the previous block, =left= and =right= are now the closest mergeable points.
 We record the structure of the merge into =indexes=, the union into =ktest_vectors=, and the merge into =already_merged=.
 
 #+name: Update merge record
 #+BEGIN_SRC ipython
-indexes.append((indexes[i], indexes[j]))
-ktest_vectors.append(ktest_vectors[i] | ktest_vectors[j])
+indexes.append((indexes[left], indexes[right]))
+ktest_vectors.append(ktest_vectors[left] | ktest_vectors[right])
 already_merged.append(False)
-already_merged[i] = already_merged[j] = True
+already_merged[left] = already_merged[right] = True
 #+END_SRC
 
 *** Cleaning up the distance chain
-The cleanup highlights the advantage of the algorithm, the fact that a chunk of the distance chain can be quickly removed by discarding the links whose left point is =i= or =j=.
+The cleanup highlights the advantage of the algorithm, the fact that a chunk of the distance chain can be quickly removed by discarding the links whose left point is =left= or =right=.
 
 #+name: Cleanup distance chain
 #+BEGIN_SRC ipython
 del distance_chain[0]
-for k in range(len(distance_chain)):
-    if distance_chain[k].index == j:
-        del distance_chain[k]
+for i in range(len(distance_chain)):
+    if distance_chain[i].left == right:
+        del distance_chain[i]
         break
 #+END_SRC
 
@@ -665,15 +665,14 @@ It would be more efficient to simply insert the new distance link at its place i
 #+name: Update distance chain
 #+BEGIN_SRC ipython
 neighbours = []
-for k, merged in enumerate(already_merged[:-1]):
+for right, merged in enumerate(already_merged[:-1]):
     if not merged:
-        neighbours.append(neighbour(dist=ktest_vectors[-1].distance(ktest_vectors[k]), index=k))
+        neighbours.append(neighbour(dist=ktest_vectors[-1].distance(ktest_vectors[right]), right=right))
 
 neighbours.sort()
-distance_chain.append(distance_link(neighbours=neighbours, index=len(ktest_vectors) - 1))
+distance_chain.append(distance_link(neighbours=neighbours, left=len(ktest_vectors) - 1))
 distance_chain.sort()
 #+END_SRC
-
 
 #+begin_src ipython :eval no-export :results output :noweb yes :exports none
 try:

@@ -138,24 +138,24 @@ def learn_ktest_union(examples, k):
     indexes = list(range(len(ktest_vectors)))
     already_merged = [False] * len(ktest_vectors)
     
-    distance_link = namedtuple('d', 'neighbours index')
-    neighbour = namedtuple('n', 'dist index')
+    distance_link = namedtuple('d', 'neighbours left')
+    neighbour = namedtuple('n', 'dist right')
     distance_chain = []
     
-    for i in range(0, len(ktest_vectors) - 1):
+    for left in range(0, len(ktest_vectors) - 1):
         neighbours = []
-        for j in range(i + 1, len(ktest_vectors)):
-            neighbours.append(neighbour(dist=ktest_vectors[i].distance(ktest_vectors[j]), index=j))
+        for right in range(left + 1, len(ktest_vectors)):
+            neighbours.append(neighbour(dist=ktest_vectors[left].distance(ktest_vectors[right]), right=right))
         neighbours.sort()
-        distance_chain.append(distance_link(neighbours=neighbours, index=i))
+        distance_chain.append(distance_link(neighbours=neighbours, left=left))
     distance_chain.sort()
 
     while True:
         print(len(distance_chain))
         while True:
-            i, (dist, j) = distance_chain[0].index, distance_chain[0].neighbours[0]
-            if not already_merged[j] and\
-               ktest_vectors[i].is_union_consistent_with(ktest_vectors[j]):
+            left, (dist, right) = distance_chain[0].left, distance_chain[0].neighbours[0]
+            if not already_merged[right] and\
+               ktest_vectors[left].is_union_consistent_with(ktest_vectors[right]):
                 break
         
             del distance_chain[0].neighbours[0]
@@ -167,22 +167,22 @@ def learn_ktest_union(examples, k):
         
             distance_chain.sort()
 
-        indexes.append((indexes[i], indexes[j]))
-        ktest_vectors.append(ktest_vectors[i] | ktest_vectors[j])
+        indexes.append((indexes[left], indexes[right]))
+        ktest_vectors.append(ktest_vectors[left] | ktest_vectors[right])
         already_merged.append(False)
-        already_merged[i] = already_merged[j] = True
+        already_merged[left] = already_merged[right] = True
 
         del distance_chain[0]
-        for k in range(len(distance_chain)):
-            if distance_chain[k].index == j:
-                del distance_chain[k]
+        for i in range(len(distance_chain)):
+            if distance_chain[i].left == right:
+                del distance_chain[i]
                 break
 
         neighbours = []
-        for k, merged in enumerate(already_merged[:-1]):
+        for right, merged in enumerate(already_merged[:-1]):
             if not merged:
-                neighbours.append(neighbour(dist=ktest_vectors[-1].distance(ktest_vectors[k]), index=k))
+                neighbours.append(neighbour(dist=ktest_vectors[-1].distance(ktest_vectors[right]), right=right))
         
         neighbours.sort()
-        distance_chain.append(distance_link(neighbours=neighbours, index=len(ktest_vectors) - 1))
+        distance_chain.append(distance_link(neighbours=neighbours, left=len(ktest_vectors) - 1))
         distance_chain.sort()
