@@ -757,6 +757,25 @@ True
 3
 #+END_example
 
+**Improving and/or simplifying proposition 4
+
+In proposition 4, having to build a consistency graph and find a path in it between a red and a blue vertices seems like a not really effective way to find if the union of two k-testables languages is consistent or not.
+So we thought of some ways to make some case easier to deal with :
+    Let's take two k-testables languages Z and Z' defined by I, F and T and I', F' and T' as explained in 2.1.
+    If T∩T' is empty then the union is not safe if :
+        -A prefix (size k-1) of an element of T is equal to a suffix (size k-1) of an element of T'
+        OR
+        -A suffix (size k-1) of an element of T is equal to a prefix (size k-1) of an element of T'
+    Else
+        If I∩I' and F∩F' are both empty, the union is not safe.
+        Else build the consistency graph and find a path as explained in proposition 4.
+
+Saying X∩X' is empty means every element of X and X' are not white vertices.
+If T∩T' is empty, that means there is no white vertices as presented in proposition 4. So every equality between a prefix of T and a suffix of T' is like a path between a red and a blue vertex from proposition 4.
+If T∩T' is not empty, we check I∩I' and F∩F'. If they are both empy, that means there is a path who go from a blue or red suffixe to a white infixe and which can't end with only white vertices and will have a way to end in F or F' because a white vertex is basically a bridge between Z and Z'. So there is a path between a red and blue vertex.
+
+This seem easier to calculate and explain, and there might be a way to improve the part where T∩T' is empty if we check what is in I and F.
+
 * Sources
 
  1. Linard, A., de la Higuera C., Vaandrager F.:Learning Unions of k-Testable Languages, (2018): https://arxiv.org/abs/1812.08269
