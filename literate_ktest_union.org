@@ -864,7 +864,7 @@ from collections import namedtuple, defaultdict
 :header-args:ipython: :tangle coherence_tests.py :eval never :exports code
 :END:
 
-We create the test script =coherence_tests_v2= in order to make sure that we have the same results across all our methods.
+We create the test script =coherence_tests= in order to make sure that we have the same results across all our methods.
 This script takes two arguments, to specify the dataset to use and the consistency method.
 #+name: Argument handling
 #+BEGIN_SRC ipython
@@ -897,6 +897,26 @@ clusters = list(map(itemgetter(1), union))
 print(clusters)
 print(len(clusters))
 #+END_SRC
+
+We can now use this script to check if our implementations return the same results on the same dataset.
+We use the printjob dataset since it is the most comprehensive dataset we have.
+
+#+BEGIN_SRC bash :wrap example :exports both
+python3 coherence_tests.py dataset/printjob.txt graph > graph
+python3 coherence_tests.py dataset/printjob.txt de_facto > de_facto
+wc -l graph de_facto
+echo difference:
+diff graph de_facto
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_example
+    2 graph
+    2 de_facto
+    4 total
+difference:
+#+END_example
+
 
 ** TODO Notes de martin :noexport:
 *Il reste des chose à intégrer au-dessus*
