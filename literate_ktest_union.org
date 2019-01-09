@@ -858,6 +858,46 @@ from collections import namedtuple, defaultdict
 <<Distance chain learning>>
 #+END_SRC
 
+
+** Coherence tests
+:PROPERTIES:
+:header-args:ipython: :tangle coherence_tests.py :eval never :exports code
+:END:
+
+We create the test script =coherence_tests_v2= in order to make sure that we have the same results across all our methods.
+This script takes two arguments, to specify the dataset to use and the consistency method.
+#+name: Argument handling
+#+BEGIN_SRC ipython
+from operator import itemgetter
+import argparse
+parser = argparse.ArgumentParser(description='Learn a k-test union from a dataset')
+parser.add_argument('dataset', type=str)
+parser.add_argument('method', type=str, choices=['graph', 'de_facto'])
+args = parser.parse_args()
+#+END_SRC
+
+We load the learning function from the right file:
+#+BEGIN_SRC ipython
+if args.method == 'graph':
+    from tangled_ktestable import learn_ktest_union
+else:
+    from tangled_ktestable_v2 import learn_ktest_union
+#+END_SRC
+
+We load the dataset:
+#+BEGIN_SRC ipython
+with open(args.dataset) as datasetfile:
+    dataset = [line.rstrip('\n') for line in datasetfile]
+#+END_SRC
+
+We learn the clusters and print them:
+#+BEGIN_SRC ipython
+union = learn_ktest_union(dataset, 3)
+clusters = list(map(itemgetter(1), union))
+print(clusters)
+print(len(clusters))
+#+END_SRC
+
 ** TODO Notes de martin :noexport:
 *Il reste des chose à intégrer au-dessus*
 
