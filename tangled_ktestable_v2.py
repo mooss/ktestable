@@ -1,5 +1,4 @@
-from collections import namedtuple
-import networkx as nx
+from collections import namedtuple, defaultdict
 
 def ktest_tuple(example, k):
     if len(example) < k - 1:
@@ -102,36 +101,54 @@ class ktestable(object):
     def distance(self, other):
         return len(self ^ other)
 
-    def consistency_graph(self, other):
-        prefixes = {'P' + el for el in self.prefixes | other.prefixes}
-        suffixes = {'S' + el for el in self.suffixes | other.suffixes}
-        infixes = {el for el in self.infixes | other.infixes}
-    
-        edges = {(pre, inf) for pre in prefixes for inf in infixes
-                 if pre[1:] == inf[:-1]}
-        edges.update({(left, right) for left in infixes for right in infixes
-                      if left[1:] == right[:-1]})
-        edges.update({(inf, suf) for inf in infixes for suf in suffixes
-                      if inf[1:] == suf[1:]})
-    
-        graph = nx.DiGraph()
-        graph.add_edges_from(edges)
-        return graph
-
     def is_union_consistent_with(self, other):
-        reds = {'P' + el for el in self.prefixes - other.prefixes} |\
-            {'S' + el for el in self.suffixes - other.suffixes} |\
-            self.infixes - other.infixes
-        blues = {'P' + el for el in other.prefixes - self.prefixes} |\
-            {'S' + el for el in other.suffixes - self.suffixes} |\
-            other.infixes - self.infixes
-        
-        graph = self.consistency_graph(other)
-        closure = nx.algorithms.dag.transitive_closure(graph)
-        red_reachable = {neighbour for red in reds for neighbour in closure.adj[red]}
-        blue_reachable = {neighbour for blue in blues for neighbour in closure.adj[blue]}
+        #<<Red and blue components>>
+        red_infixes = self.infixes - other.infixes
+        red_start = self.prefixes - other.prefixes
+        red_start.update(inf[1:] for inf in red_infixes)
+        red_end = self.suffixes - other.suffixes
+        red_end.update(inf[:-1] for inf in red_infixes)
     
-        return red_reachable.isdisjoint(blues) and blue_reachable.isdisjoint(reds)
+        blue_infixes = other.infixes - self.infixes
+        blue_start = other.prefixes - self.prefixes
+        blue_start.update(inf[1:] for inf in blue_infixes)
+        blue_end = other.suffixes - self.suffixes
+        blue_end.update(inf[:-1] for inf in blue_infixes)
+    
+        #<<Direct paths>>
+        if blue_start & red_end or red_start & blue_end:
+            return False
+    
+        #<<Indirect paths>>
+        white_infixes = self.infixes & other.infixes
+        de_facto_red = string_transitive_closure(red_start, white_infixes)
+        de_facto_blue = string_transitive_closure(blue_start, white_infixes)
+    
+        de_facto_red = {el[1:] for el in de_facto_red}
+        de_facto_blue = {el[1:] for el in de_facto_blue}
+    
+        return not(de_facto_blue & red_end) and not(de_facto_red & blue_end)
+
+def string_transitive_closure(starting_prefixes, infixes):
+    #<<Prefixes of infixes>>
+    prefdict = defaultdict(set)
+    for inf in infixes:
+        prefdict[inf[:-1]].add(inf)
+
+    #<<Initial closure>>
+    closure = set()
+    for pref in starting_prefixes:
+        if pref in prefdict:
+            closure.update(prefdict.pop(pref))
+
+    #<<Transitive closure>>
+    result = set()
+    while closure:
+        el = closure.pop()
+        result.add(el)
+        if el[1:] in prefdict:
+           closure.update(prefdict.pop(el[1:]))
+    return result
 
 def learn_ktest_union(examples, k):
     ktest_vectors = [ktestable.from_example(ex, k) for ex in examples]

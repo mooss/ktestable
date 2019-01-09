@@ -384,7 +384,7 @@ The creation of "invalid example": ({'aa'}, {'aa'}, {'aaaa'}, {'ada'}) failed:
  - Incorrect prefix length, incorrect suffix length, short strings conditions not satisfied.
 The creation of "aa+": ({'aa'}, {'aa'}, {'aaa'}, {'aa'}) went well
 The creation of "bb+": ({'bb'}, {'bb'}, {'bbb'}, {'bb'}) went well
-{'bb', 'aa'}
+{'aa', 'bb'}
 set()
 {'aa', 'bb'}
 0
@@ -400,6 +400,9 @@ In this part, we will first see how to find out if two languages are compatible 
 We will then present an alternative to the nearest-neighbour algorithm to produce a union of \(k\)-testable languages.
 
 ** Union consistency definition
+:PROPERTIES:
+:CUSTOM_ID: about_prop_4
+:END:
 
 Before learning the union of languages, we need to ensure the union consistency between two \(k\)-test vectors $Z$ and $Z'$, /i.e./ the fact that the union of their languages should be the languages of their union.
 Linard /et al./'s proposition 4 provides a way to do this.
@@ -425,7 +428,8 @@ We will call this graph the consistency graph, and there are three aspects to it
    - a blue vertex is endemic to $Z'$, and
    - a white vertex is endemic to both.
 
-A vertex $v$ is endemic to a vector $X = \langle I, F, T, C \rangle$ compared to another vector $X' = \langle I', F', T', C' \rangle$ if it appears only in $X$. More formally, it is endemic if the following holds:
+A vertex $v$ is endemic to a vector $X = \langle I, F, T, C \rangle$ compared to another vector $X' = \langle I', F', T', C' \rangle$ if it appears only in $X$.
+More formally, it is endemic if the following holds:
 \begin{equation*}
   \begin{cases}
     u \in I \setminus I' & \text{if } v = \bullet u \\
@@ -616,7 +620,6 @@ The exit point of the function is also here, the result is returned when the dis
 
 #+name: Find the closest mergeable points
 #+BEGIN_SRC ipython
-print(len(distance_chain))
 while True:
     left, (dist, right) = distance_chain[0].left, distance_chain[0].neighbours[0]
     if not already_merged[right] and\
@@ -747,25 +750,124 @@ True
 False
 
 True
-7
-6
-5
-4
-4
-2
 [((4, 6), 1), (0, 7), ((3, 5), 2)]
 3
 #+END_example
 
-**Improving and/or simplifying proposition 4
+* About proposition 4
+
+As discussed in section [[#about_prop_4]], proposition 4 provides a way to find out whether the union of the languages is the language of the union, by building a consistency graph.
+We propose a way to simplify this computation.
+
+There are only two ways a path can form between red and blue ; via a direct path and via an indirect path.
+We only consider paths from blue to red but the same applies to paths from red to blue.
+A direct path is when an edge exists between a blue and a red node, whereas an indirect path goes from to a blue to a read node, while going through $n$ white nodes, $n \in \mathbb{N}_{\textgreater 0}$.
+
+A direct path is easy to detect and occurs when a superposition is possible between a red component and a blue component.
+We define the conditions for superposition to occur in the table [[superpositions]], with $c \in \Sigma$ and $u, v \in \Sigma^{k-1}$.
+
+#+name: superpositions
+#+caption: Conditions for superpositions between prefixes, infixes and suffixes
+| Left           | Right           | Condition for superposition |
+|----------------+-----------------+-----------------------------|
+| Prefix $I$     | Infix $T = uc$  | $I = u$                     |
+| Infix $T = cv$ | Infix $T' = uc$ | $v = u$                     |
+| Infix $T = cv$ | Suffix $F$      | $v = F$                     |
+
+An indirect path is more tricky to detect, because it can pass through any number of white components.
+Our approach is based on the observation that to pass from blue to red, the only white components an indirect path can go through are infixes.
+We consider that white infixes who have a superposition with blue prefixes or infixes are ``de facto'' blue infixes and that a superposition between a de facto blue infix and a white infix is another de facto blue infix.
+
+
+** String transitive closure
+
+We will make use of the defaultdict class :
+#+BEGIN_SRC ipython
+from collections import defaultdict
+#+END_SRC
+
+#+name: String transitive closure
+#+BEGIN_SRC ipython
+def string_transitive_closure(starting_prefixes, infixes):
+    #<<Prefixes of infixes>>
+    prefdict = defaultdict(set)
+    for inf in infixes:
+        prefdict[inf[:-1]].add(inf)
+
+    #<<Initial closure>>
+    closure = set()
+    for pref in starting_prefixes:
+        if pref in prefdict:
+            closure.update(prefdict.pop(pref))
+
+    #<<Transitive closure>>
+    result = set()
+    while closure:
+        el = closure.pop()
+        result.add(el)
+        if el[1:] in prefdict:
+           closure.update(prefdict.pop(el[1:]))
+    return result
+#+END_SRC
+
+** Consistency v2
+#+name: Union consistency v2
+#+BEGIN_SRC ipython
+def is_union_consistent_with(self, other):
+    #<<Red and blue components>>
+    red_infixes = self.infixes - other.infixes
+    red_start = self.prefixes - other.prefixes
+    red_start.update(inf[1:] for inf in red_infixes)
+    red_end = self.suffixes - other.suffixes
+    red_end.update(inf[:-1] for inf in red_infixes)
+
+    blue_infixes = other.infixes - self.infixes
+    blue_start = other.prefixes - self.prefixes
+    blue_start.update(inf[1:] for inf in blue_infixes)
+    blue_end = other.suffixes - self.suffixes
+    blue_end.update(inf[:-1] for inf in blue_infixes)
+
+    #<<Direct paths>>
+    if blue_start & red_end or red_start & blue_end:
+        return False
+
+    #<<Indirect paths>>
+    white_infixes = self.infixes & other.infixes
+    de_facto_red = string_transitive_closure(red_start, white_infixes)
+    de_facto_blue = string_transitive_closure(blue_start, white_infixes)
+
+    de_facto_red = {el[1:] for el in de_facto_red}
+    de_facto_blue = {el[1:] for el in de_facto_blue}
+
+    return not(de_facto_blue & red_end) and not(de_facto_red & blue_end)
+#+END_SRC
+
+
+** ktestable v2 :noexport:
+
+#+name: ktestable with union consistency v2
+#+BEGIN_SRC ipython :exports none :noweb yes :eval no-export :results silent :tangle tangled_ktestable_v2.py
+from collections import namedtuple, defaultdict
+
+<<ktestable class>>
+
+    <<Union consistency v2>>
+
+<<String transitive closure>>
+
+<<Distance chain learning>>
+#+END_SRC
+
+** TODO Notes de martin :noexport:
+*Il reste des chose à intégrer au-dessus*
 
 In proposition 4, having to build a consistency graph and find a path in it between a red and a blue vertices seems like a not really effective way to find if the union of two k-testables languages is consistent or not.
 
 So we thought of some ways to make some case easier to deal with :
 
-    Let's take two k-testables languages Z and Z' defined by I, F and T and I', F' and T' as explained in 2.1.
+Let's take two k-testables languages Z and Z' defined by I, F and T and I', F' and T' as explained in 2.1.
 
-    If T∩T' is empty then the union is not safe if :
+If T∩T' is empty then the union is not safe if :
 
         -A prefix (size k-1) of an element of T is equal to a suffix (size k-1) of an element of T'
 
