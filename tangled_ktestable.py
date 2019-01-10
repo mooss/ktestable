@@ -128,8 +128,8 @@ class ktestable(object):
         
         graph = self.consistency_graph(other)
         closure = nx.algorithms.dag.transitive_closure(graph)
-        red_reachable = {neighbour for red in reds for neighbour in closure.adj[red]}
-        blue_reachable = {neighbour for blue in blues for neighbour in closure.adj[blue]}
+        red_reachable = {neighbour for red in reds if red in closure for neighbour in closure.adj[red]}
+        blue_reachable = {neighbour for blue in blues if blue in closure for neighbour in closure.adj[blue]}
     
         return red_reachable.isdisjoint(blues) and blue_reachable.isdisjoint(reds)
 
