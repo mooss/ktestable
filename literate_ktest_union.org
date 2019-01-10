@@ -906,6 +906,41 @@ from collections import namedtuple, defaultdict
 <<Distance chain learning>>
 #+END_SRC
 
+** Measure
+
+While this way to look at the union consistency problem still relies on graph, it has intuitively the advantage of being less expensive to compute since it can identify an early exit condition and when that condition is not met, it compute the transitive only on a small subset of the graph.
+
+We propose to measure experimentally the speedup provided.
+For this, we measure the speed of execution of the two version of the union consistency test on all the possible combinations of the 300 first examples of the printjob dataset.
+
+#+BEGIN_SRC ipython :session union_consistency_speed_test :eval no-export :results output :wrap "src text" :exports both
+from itertools import combinations
+from tangled_ktestable import ktestable as ktestable_v1
+from tangled_ktestable_v2 import ktestable as ktestable_v2
+
+with open('dataset/printjob.txt') as datasetfile:
+    dataset = [line.rstrip('\n') for line in datasetfile]
+
+dataset = dataset[:300]
+instances_v1 = [ktestable_v1.from_example(ex, 3) for ex in dataset]
+instances_v2 = [ktestable_v2.from_example(ex, 3) for ex in dataset]
+
+print('v1')
+%timeit -n 5 -r 5 [left.is_union_consistent_with(right) for left, right in combinations(instances_v1, 2)]
+print('v2')
+%timeit -n 5 -r 5 [left.is_union_consistent_with(right) for left, right in combinations(instances_v2, 2)]
+#+END_SRC
+
+#+RESULTS:
+#+BEGIN_src text
+v1
+14.4 s ± 185 ms per loop (mean ± std. dev. of 5 runs, 5 loops each)
+v2
+280 ms ± 170 µs per loop (mean ± std. dev. of 5 runs, 5 loops each)
+#+END_src
+
+We have shown experimentally that this optimisation of the union consistency test is much faster.
+
 * Coherence tests
 :PROPERTIES:
 :header-args:ipython: :tangle coherence_tests.py :eval never :exports code
@@ -964,7 +999,7 @@ diff graph de_facto
 difference:
 #+END_example
 
-** TODO Notes de martin :noexport:
+* TODO Notes de martin                                             :noexport:
 *Il reste des chose à intégrer au-dessus*
 
 In proposition 4, having to build a consistency graph and find a path in it between a red and a blue vertices seems like a not really effective way to find if the union of two k-testables languages is consistent or not.
