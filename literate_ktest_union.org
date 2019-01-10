@@ -53,8 +53,10 @@ This modification of =org-babel-exp-code= includes the name of named code blocks
 Unless explicitely specified, all definitions and algorithms in this document are coming from Linard /et al./ (2018), which will sometimes be refered to as ``the paper''.
 
 We will present a possible implementation of those definitions and algorithms in a modular fashion, using Python3.
-Modular meaning here that we will implement concepts as they come and assemble them later as a whole when the necessary parts are complete.
+Modular meaning here that we will implement concepts as they come.
 So if an src_python[:exports code]{__init__} appears in the wild without its enclosing src_python[:exports code]{class}, it's nothing to worry about.
+
+The source of this document, an up-to-date version of it and the generated code are disponible on github[fn:: See https://github.com/mooss/ktestable.].
 
 * \(k\)-testable languages
 
@@ -62,7 +64,7 @@ A \(k\)-testable language is a language that can be recognised by sliding a wind
 By definition, we have $k > 0$ since sliding a window of null or negative size would hardly make any sense.
 
 A language is said to be \(k\)-testable in the strict sense (\(k\)-TSS) if it can be represented using a construct called a \(k\)-test vector.
-The necessary informations and operations on this construct will be implemented in the =ktestable= class.
+The necessary informations and operations on this construct will be implemented in the =ktestable= class, present in the file =tangled_ktestable.py=.
 
 ** \(k\)-test vector
 
@@ -782,7 +784,7 @@ With that in mind, an indirect path from blue to red exists when a superposition
 We provide no demonstration for our claim but we hope that one can be derived from the preexisting demonstrations in the paper.
 However, we do provide an implementation for this optimised way of computing the union consistency, using this time a hand rolled transitive closure rather than a graph library.
 
-*** De facto colored states identification
+** De facto colored states identification
 
 We can reformulate the definition of ``de facto blue states'' that we gave earlier as finding all the white infixes reachable from blue states.
 This is simply a matter of computing a transitive closure.
@@ -834,7 +836,7 @@ while closure:
 return result
 #+END_SRC
 
-*** Union consistency v2
+** Union consistency v2
 
 We can now implement the new union consistency test by getting the colored components and checking for direct and indirect paths between red and blue.
 
@@ -888,6 +890,7 @@ de_facto_blue = {el[1:] for el in de_facto_blue}
 return not(de_facto_blue & red_stop) and not(de_facto_red & blue_stop)
 #+END_SRC
 
+This new union consistency is present in the file =tangled_ktestable_v2=.
 ** ktestable v2 :noexport:
 
 #+name: ktestable with union consistency v2
@@ -903,7 +906,7 @@ from collections import namedtuple, defaultdict
 <<Distance chain learning>>
 #+END_SRC
 
-** Coherence tests
+* Coherence tests
 :PROPERTIES:
 :header-args:ipython: :tangle coherence_tests.py :eval never :exports code
 :END:
