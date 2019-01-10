@@ -129,19 +129,16 @@ class ktestable(object):
     
         return not(de_facto_blue & red_end) and not(de_facto_red & blue_end)
 
-def string_transitive_closure(starting_prefixes, infixes):
-    #<<Prefixes of infixes>>
+def string_transitive_closure(starting_components, infixes):
     prefdict = defaultdict(set)
     for inf in infixes:
         prefdict[inf[:-1]].add(inf)
 
-    #<<Initial closure>>
     closure = set()
-    for pref in starting_prefixes:
+    for pref in starting_components:
         if pref in prefdict:
             closure.update(prefdict.pop(pref))
 
-    #<<Transitive closure>>
     result = set()
     while closure:
         el = closure.pop()

@@ -757,11 +757,11 @@ True
 * About proposition 4
 
 As discussed in section [[#about_prop_4]], proposition 4 provides a way to find out whether the union of the languages is the language of the union, by building a consistency graph.
-We propose a way to simplify this computation.
+We propose here a way to simplify this computation.
 
-There are only two ways a path can form between red and blue ; via a direct path and via an indirect path.
+There are only two ways to go from a red to a blue component ; via a direct path and via an indirect path.
 We only consider paths from blue to red but the same applies to paths from red to blue.
-A direct path is when an edge exists between a blue and a red node, whereas an indirect path goes from to a blue to a read node, while going through $n$ white nodes, $n \in \mathbb{N}_{\textgreater 0}$.
+A direct path is when an edge exists between a blue and a red node, whereas an indirect path goes from to a blue to a red node, while going through $n$ white nodes, $n \in \mathbb{N}_{\textgreater 0}$.
 
 A direct path is easy to detect and occurs when a superposition is possible between a red component and a blue component.
 We define the conditions for superposition to occur in the table [[superpositions]], with $c \in \Sigma$ and $u, v \in \Sigma^{k-1}$.
@@ -777,40 +777,64 @@ We define the conditions for superposition to occur in the table [[superposition
 An indirect path is more tricky to detect, because it can pass through any number of white components.
 Our approach is based on the observation that to pass from blue to red, the only white components an indirect path can go through are infixes.
 We consider that white infixes who have a superposition with blue prefixes or infixes are ``de facto'' blue infixes and that a superposition between a de facto blue infix and a white infix is another de facto blue infix.
+With that in mind, an indirect path from blue to red exists when a superposition is possible between a de facto blue infix and a red infix or suffix.
 
+We provide no demonstration for our claim but we hope that one can be derived from the preexisting demonstrations in the paper.
+However, we do provide an implementation for this optimised way of computing the union consistency, using this time a hand rolled transitive closure rather than a graph library.
 
-** String transitive closure
+*** De facto colored states identification
 
-We will make use of the defaultdict class :
+We can reformulate the definition of ``de facto blue states'' that we gave earlier as finding all the white infixes reachable from blue states.
+This is simply a matter of computing a transitive closure.
+
+For this, we will make use of the defaultdict class:
 #+BEGIN_SRC ipython
 from collections import defaultdict
 #+END_SRC
 
+Our implementation of transitive closure is a function that can be separated in three parts.
 #+name: String transitive closure
-#+BEGIN_SRC ipython
-def string_transitive_closure(starting_prefixes, infixes):
-    #<<Prefixes of infixes>>
-    prefdict = defaultdict(set)
-    for inf in infixes:
-        prefdict[inf[:-1]].add(inf)
+#+BEGIN_SRC ipython :noweb no-export
+def string_transitive_closure(starting_components, infixes):
+    <<Prefixes of infixes>>
 
-    #<<Initial closure>>
-    closure = set()
-    for pref in starting_prefixes:
-        if pref in prefdict:
-            closure.update(prefdict.pop(pref))
+    <<Initial closure>>
 
-    #<<Transitive closure>>
-    result = set()
-    while closure:
-        el = closure.pop()
-        result.add(el)
-        if el[1:] in prefdict:
-           closure.update(prefdict.pop(el[1:]))
-    return result
+    <<Transitive closure>>
 #+END_SRC
 
-** Consistency v2
+=prefdict= is a mapping from the prefixes of the infixes to the infixes.
+It allows us to quickly find superpositions.
+
+#+name: Prefixes of infixes
+#+BEGIN_SRC ipython
+prefdict = defaultdict(set)
+for inf in infixes:
+    prefdict[inf[:-1]].add(inf)
+#+END_SRC
+
+The initial states in the closure are those who have a superposition with the starting components.
+#+name: Initial closure
+#+BEGIN_SRC ipython
+closure = set()
+for pref in starting_components:
+    if pref in prefdict:
+        closure.update(prefdict.pop(pref))
+#+END_SRC
+
+To complete the transitive closure, we iterate on all the elements in the closure and add to it all the new superpositions.
+#+name: Transitive closure
+#+BEGIN_SRC ipython
+result = set()
+while closure:
+    el = closure.pop()
+    result.add(el)
+    if el[1:] in prefdict:
+       closure.update(prefdict.pop(el[1:]))
+return result
+#+END_SRC
+
+*** Consistency v2
 #+name: Union consistency v2
 #+BEGIN_SRC ipython
 def is_union_consistent_with(self, other):
@@ -842,7 +866,6 @@ def is_union_consistent_with(self, other):
     return not(de_facto_blue & red_end) and not(de_facto_red & blue_end)
 #+END_SRC
 
-
 ** ktestable v2 :noexport:
 
 #+name: ktestable with union consistency v2
@@ -857,7 +880,6 @@ from collections import namedtuple, defaultdict
 
 <<Distance chain learning>>
 #+END_SRC
-
 
 ** Coherence tests
 :PROPERTIES:
@@ -916,7 +938,6 @@ diff graph de_facto
     4 total
 difference:
 #+END_example
-
 
 ** TODO Notes de martin :noexport:
 *Il reste des chose à intégrer au-dessus*
