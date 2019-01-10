@@ -102,32 +102,29 @@ class ktestable(object):
         return len(self ^ other)
 
     def is_union_consistent_with(self, other):
-        #<<Red and blue components>>
         red_infixes = self.infixes - other.infixes
         red_start = self.prefixes - other.prefixes
         red_start.update(inf[1:] for inf in red_infixes)
-        red_end = self.suffixes - other.suffixes
-        red_end.update(inf[:-1] for inf in red_infixes)
-    
+        red_stop = self.suffixes - other.suffixes
+        red_stop.update(inf[:-1] for inf in red_infixes)
+        
         blue_infixes = other.infixes - self.infixes
         blue_start = other.prefixes - self.prefixes
         blue_start.update(inf[1:] for inf in blue_infixes)
-        blue_end = other.suffixes - self.suffixes
-        blue_end.update(inf[:-1] for inf in blue_infixes)
+        blue_stop = other.suffixes - self.suffixes
+        blue_stop.update(inf[:-1] for inf in blue_infixes)
     
-        #<<Direct paths>>
-        if blue_start & red_end or red_start & blue_end:
+        if blue_start & red_stop or red_start & blue_stop:
             return False
     
-        #<<Indirect paths>>
         white_infixes = self.infixes & other.infixes
         de_facto_red = string_transitive_closure(red_start, white_infixes)
         de_facto_blue = string_transitive_closure(blue_start, white_infixes)
-    
+        
         de_facto_red = {el[1:] for el in de_facto_red}
         de_facto_blue = {el[1:] for el in de_facto_blue}
-    
-        return not(de_facto_blue & red_end) and not(de_facto_red & blue_end)
+        
+        return not(de_facto_blue & red_stop) and not(de_facto_red & blue_stop)
 
 def string_transitive_closure(starting_components, infixes):
     prefdict = defaultdict(set)

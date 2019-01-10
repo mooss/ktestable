@@ -834,36 +834,58 @@ while closure:
 return result
 #+END_SRC
 
-*** Consistency v2
+*** Union consistency v2
+
+We can now implement the new union consistency test by getting the colored components and checking for direct and indirect paths between red and blue.
+
 #+name: Union consistency v2
-#+BEGIN_SRC ipython
+#+BEGIN_SRC ipython :noweb no-export
 def is_union_consistent_with(self, other):
-    #<<Red and blue components>>
-    red_infixes = self.infixes - other.infixes
-    red_start = self.prefixes - other.prefixes
-    red_start.update(inf[1:] for inf in red_infixes)
-    red_end = self.suffixes - other.suffixes
-    red_end.update(inf[:-1] for inf in red_infixes)
+    <<Colored components>>
 
-    blue_infixes = other.infixes - self.infixes
-    blue_start = other.prefixes - self.prefixes
-    blue_start.update(inf[1:] for inf in blue_infixes)
-    blue_end = other.suffixes - self.suffixes
-    blue_end.update(inf[:-1] for inf in blue_infixes)
+    <<Direct paths>>
 
-    #<<Direct paths>>
-    if blue_start & red_end or red_start & blue_end:
-        return False
+    <<Indirect paths>>
+#+END_SRC
 
-    #<<Indirect paths>>
-    white_infixes = self.infixes & other.infixes
-    de_facto_red = string_transitive_closure(red_start, white_infixes)
-    de_facto_blue = string_transitive_closure(blue_start, white_infixes)
+For each color, we compute the infixes, as well as the potential starting and stopping points of paths.
+The potential starting points are the prefixes and the prefixes of infixes and the potential stopping points are the suffixes and the suffixes of infixes.
 
-    de_facto_red = {el[1:] for el in de_facto_red}
-    de_facto_blue = {el[1:] for el in de_facto_blue}
+#+name: Colored components
+#+BEGIN_SRC ipython
+red_infixes = self.infixes - other.infixes
+red_start = self.prefixes - other.prefixes
+red_start.update(inf[1:] for inf in red_infixes)
+red_stop = self.suffixes - other.suffixes
+red_stop.update(inf[:-1] for inf in red_infixes)
 
-    return not(de_facto_blue & red_end) and not(de_facto_red & blue_end)
+blue_infixes = other.infixes - self.infixes
+blue_start = other.prefixes - self.prefixes
+blue_start.update(inf[1:] for inf in blue_infixes)
+blue_stop = other.suffixes - self.suffixes
+blue_stop.update(inf[:-1] for inf in blue_infixes)
+#+END_SRC
+
+If a direct path is found, we can stop early without having to search for indirect paths, which is more costly.
+#+name: Direct paths
+#+BEGIN_SRC ipython
+if blue_start & red_stop or red_start & blue_stop:
+    return False
+#+END_SRC
+
+If there were no direct paths, the transitive closure function is used to find the de facto blue states and the de facto red states.
+Finally, if no a superposition exists between de facto red states and blue states and vice-versa, this means that there is a no path between those two colors, and therefore that the union is consistent.
+
+#+name: Indirect paths
+#+BEGIN_SRC ipython
+white_infixes = self.infixes & other.infixes
+de_facto_red = string_transitive_closure(red_start, white_infixes)
+de_facto_blue = string_transitive_closure(blue_start, white_infixes)
+
+de_facto_red = {el[1:] for el in de_facto_red}
+de_facto_blue = {el[1:] for el in de_facto_blue}
+
+return not(de_facto_blue & red_stop) and not(de_facto_red & blue_stop)
 #+END_SRC
 
 ** ktestable v2 :noexport:
