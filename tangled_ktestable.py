@@ -144,13 +144,18 @@ def learn_ktest_union(examples, k):
     for left in range(0, len(ktest_vectors) - 1):
         neighbours = []
         for right in range(left + 1, len(ktest_vectors)):
-            neighbours.append((ktest_vectors[left].distance(ktest_vectors[right]), right))
+            neigh = (ktest_vectors[left].distance(ktest_vectors[right]), right)
+            neighbours.append(neigh)
         neighbours.sort()
         distance_chain.append(distance_link(neighbours=neighbours, left=left))
     distance_chain.sort()
 
     while True:
         while True:
+            if len(distance_chain) == 0:
+                return [(ktest_vectors[x], indexes[x])
+                        for x, merged in enumerate(already_merged) if not merged]
+        
             left, (dist, right) = distance_chain[0].left, distance_chain[0].neighbours[0]
             if not already_merged[right] and\
                ktest_vectors[left].is_union_consistent_with(ktest_vectors[right]):
@@ -159,13 +164,10 @@ def learn_ktest_union(examples, k):
             del distance_chain[0].neighbours[0]
             if len(distance_chain[0].neighbours) == 0:
                 del distance_chain[0]
-                if len(distance_chain) == 0:
-                    return [(ktest_vectors[x], indexes[x])
-                            for x, merged in enumerate(already_merged) if not merged]
         
             distance_chain.sort()
 
-        indexes.append((indexes[left], indexes[right]))
+        indexes.append((indexes[left], indexes[right], dist))
         ktest_vectors.append(ktest_vectors[left] | ktest_vectors[right])
         already_merged.append(False)
         already_merged[left] = already_merged[right] = True

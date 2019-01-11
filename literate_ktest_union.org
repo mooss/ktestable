@@ -571,7 +571,7 @@ We have separated our implementation into five parts which will be explained one
 The first part is only about the initialisation of data structures, among which sits the main one, the distance chain.
 The other parts are contained in a =while= loop and their goal is to deplete this distance chain.
 
-#+name: Distance chain learning
+#+name: Distance chain algorithm
 #+BEGIN_SRC ipython :eval no-export :results output :noweb no-export :wrap example
 def learn_ktest_union(examples, k):
     <<Initialiase data structures>>
@@ -607,7 +607,8 @@ distance_chain = []
 for left in range(0, len(ktest_vectors) - 1):
     neighbours = []
     for right in range(left + 1, len(ktest_vectors)):
-        neighbours.append((ktest_vectors[left].distance(ktest_vectors[right]), right))
+        neigh = (ktest_vectors[left].distance(ktest_vectors[right]), right)
+        neighbours.append(neigh)
     neighbours.sort()
     distance_chain.append(distance_link(neighbours=neighbours, left=left))
 distance_chain.sort()
@@ -623,6 +624,10 @@ The exit point of the function is also here, the result is returned when the dis
 #+name: Find the closest mergeable points
 #+BEGIN_SRC ipython
 while True:
+    if len(distance_chain) == 0:
+        return [(ktest_vectors[x], indexes[x])
+                for x, merged in enumerate(already_merged) if not merged]
+
     left, (dist, right) = distance_chain[0].left, distance_chain[0].neighbours[0]
     if not already_merged[right] and\
        ktest_vectors[left].is_union_consistent_with(ktest_vectors[right]):
@@ -631,9 +636,6 @@ while True:
     del distance_chain[0].neighbours[0]
     if len(distance_chain[0].neighbours) == 0:
         del distance_chain[0]
-        if len(distance_chain) == 0:
-            return [(ktest_vectors[x], indexes[x])
-                    for x, merged in enumerate(already_merged) if not merged]
 
     distance_chain.sort()
 #+END_SRC
@@ -644,7 +646,7 @@ We record the structure of the merge into =indexes=, the union into =ktest_vecto
 
 #+name: Update merge record
 #+BEGIN_SRC ipython
-indexes.append((indexes[left], indexes[right]))
+indexes.append((indexes[left], indexes[right], dist))
 ktest_vectors.append(ktest_vectors[left] | ktest_vectors[right])
 already_merged.append(False)
 already_merged[left] = already_merged[right] = True
@@ -678,20 +680,6 @@ distance_chain.append(distance_link(neighbours=neighbours, left=len(ktest_vector
 distance_chain.sort()
 #+END_SRC
 
-#+begin_src ipython :eval no-export :results output :noweb yes :exports none
-try:
-    <<learnktest>>
-except Exception as e:
-    import traceback
-    import sys
-    traceback.print_exc(file=sys.stdout)
-#+end_src
-
-#+RESULTS:
-:RESULTS:
-[(<__main__.ktestable object at 0x7f33996f2588>, 0), (<__main__.ktestable object at 0x7f3391a9e2e8>, 7), (<__main__.ktestable object at 0x7f339a0c9710>, ((1, 4), 6)), (<__main__.ktestable object at 0x7f339a0c92b0>, ((3, 5), 2))]
-:END:
-
 ** Tests
 :PROPERTIES:
 :header-args:ipython: :tangle tangled_test.py :session ktestable
@@ -708,7 +696,7 @@ import networkx as nx
 
     <<Union consistency>>
 
-<<Distance chain learning>>
+<<Distance chain algorithm>>
 #+END_SRC
 
 #+BEGIN_SRC ipython :exports none
@@ -903,7 +891,7 @@ from collections import namedtuple, defaultdict
 
 <<String transitive closure>>
 
-<<Distance chain learning>>
+<<Distance chain algorithm>>
 #+END_SRC
 
 ** Measure
@@ -955,6 +943,7 @@ import argparse
 parser = argparse.ArgumentParser(description='Learn a k-test union from a dataset')
 parser.add_argument('dataset', type=str)
 parser.add_argument('method', type=str, choices=['graph', 'de_facto'])
+parser.add_argument('k', type=int, default=3, nargs='?')
 args = parser.parse_args()
 #+END_SRC
 
@@ -974,7 +963,7 @@ with open(args.dataset) as datasetfile:
 
 We learn the clusters and print them:
 #+BEGIN_SRC ipython
-union = learn_ktest_union(dataset, 3)
+union = learn_ktest_union(dataset, args.k)
 clusters = list(map(itemgetter(1), union))
 print(clusters)
 print(len(clusters))
