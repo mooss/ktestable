@@ -1004,6 +1004,10 @@ CPU times: user 1min 46s, sys: 196 ms, total: 1min 46s
 Wall time: 1min 47s
 #+END_example
 
+This is intuitively understandable, because since the alphabet of the printjob dataset only has 6 characters, a lot of segments of size $k$ will be repeated for very small values of $k$.
+This repetition does not matter because the components are stored in sets.
+Therefore, the graph will stay small, and it will be fast to go through it.
+For other scenarios, with larger values of k and larger alphabets, our proposition can make a big difference.
 
 * Coherence tests
 :PROPERTIES:
