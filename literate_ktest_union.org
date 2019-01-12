@@ -894,7 +894,7 @@ from collections import namedtuple, defaultdict
 <<Distance chain algorithm>>
 #+END_SRC
 
-** Measures
+** Measurements
 
 While this way to look at the union consistency problem still relies on graph, it has intuitively the advantage of being less expensive to compute since it can identify an early exit condition and when that condition is not met, it compute the transitive closure only on a small subset of the graph.
 
@@ -1067,6 +1067,29 @@ diff graph de_facto
     4 total
 difference:
 #+END_example
+
+* Conclusion and discussion
+We have detailed an alternative to the nearest-neighbour chain algorithm and proposed an amelioration of proposition 4.
+We initially set out to find an approximation to the rate of generalisation of the union of \(k\)-test vectors, with the aim of completing the hierarchical clustering when no union consistent vectors remained.
+We did not have enough time to implement it, but we can quickly explain the gist of it here.
+
+We think that a good proxy for the rate of generalisation is the number of ways to form a new word, that is to say the number of paths between red and blue in the consistency graph.
+Using what we have done in part [[About proposition 4]], we can make a baseline for this.
+The number of direct paths is trivial to count.
+Once more, the indirect paths prove themselves more difficult to handle because there can be loops between de facto colored vertices.
+We propose to simply multiply the number of entry points with the number of exit points.
+We add to this the number of direct paths and we have our measure.
+This is a bit handwavy but it might make a good enough baseline nevertheless.
+
+Once we are at the stage where all vectors are union inconsistent, we continue the clustering with this measure.
+The usefulness of this approach might be tested with the following experiment:
+ - taking the smallest union obtained without using this measure with a small value of $k$,
+ - learning the union on the same dataset, this time with a larger value of $k$,
+ - using the measure to extend the clustering until the same union size is reached, and
+ - comparing the two languages obtained.
+
+In the end, we think that \(k\)-testable languages are a simple yet deep concept with a lot of untapped potential.
+
 
 * TODO Notes de martin                                             :noexport:
 *Il reste des chose à intégrer au-dessus*
