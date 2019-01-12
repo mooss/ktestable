@@ -285,8 +285,8 @@ It's fairly easy to construct the minimal prefixes, suffixes, infixes and short 
 
 The prefixes and suffixes are simply the sets composed of the prefix and suffix of the example.
 The infixes can be defined by extracting all substring of length $k$.
-The only thing to be mindful of is the short strings condition and the case where $e < k - 1$ (when there are no prefixes, only a short string).
-The $e = k$ case sorts itself out because in this situation, the example is just one presuffix.
+The only thing to be mindful of is the short strings condition and the case where $\vert e \vert < k - 1$ (when there are no prefixes, only a short string).
+The $\vert e \vert = k$ case sorts itself out because in this situation, the example is just one presuffix.
 
 #+name: 4-tuple from example
 #+BEGIN_SRC ipython
@@ -505,6 +505,7 @@ return graph
 
 ** Union consistency implementation
 
+This part is mostly a matter of using the consistency graph to search for multicolor paths.
 #+name: Union consistency
 #+BEGIN_SRC ipython :noweb no-export
 def is_union_consistent_with(self, other):
@@ -515,7 +516,7 @@ def is_union_consistent_with(self, other):
 
 We compute only the red and blue vertices, we do not need the white.
 As has been done before, we prepend a =P= to prefixes and an =S= to suffixes.
-We then search for a path, using the fact that searching for a path between reds and blues is akin to find a transitive closure and examine the reachability of red and blue nodes with respect to one another.
+We then search for a path, using the fact that searching for a path between reds and blues is akin to find a transitive closure and examine the reachability of red and blue vertices with respect to one another.
 
 #+name:Path research
 #+BEGIN_SRC ipython
@@ -543,24 +544,23 @@ return red_reachable.isdisjoint(blues) and blue_reachable.isdisjoint(reds)
 
 Because we have had difficulties understanding the nearest-neighbour chain algorithm, we decided to roll our own algorithm to cluster \(k\)-test vectors.
 We dubbed it the distance chain algorithm.
-It is almost certainly less efficient than the alternative.
 
 The core idea is to provide an easy access to nearest-neighbours by storing edges in a pre-sorted data structure, the ``distance chain''.
 
 First, some vocabulary:
- - A point :: is here a k-test vector.
- - An edge :: is a couple of distinct points, with their distance.
- - A distance link :: is a way to store some edges common to to one particular point, the left point, the other points are called the right points.
+ - A vertex :: is here a k-test vector.
+ - An edge :: is a couple of distinct vertices, with their distance.
+ - A distance link :: is a way to store some edges common to to one particular vertex, the left vertex, the other vertices are called the right vertices and are stored in a list, the neighbour list.
  - A distance chain :: is a list of distance links without edge duplication.
 
-All distance links are sorted according to distance and the distance chain is sorted according to the distance of the closest points, /i.e./ the first point of each link.
+All distance links are sorted according to distance and the distance chain is sorted according to the distance of the closest vertices, /i.e./ the first vertex of the neighbour list.
 
 There are two main intuitions:
- - When the two closest points are not mergeable (because they are not union compatible), it is easy to discard them and find the next two closest points.
- - After the two closest points are found, a lot of now useless edges can be discarded by throwing away the distance link whose left point is one of them.
+ - When the two closest vertices are not mergeable (because they are not union compatible), it is easy to discard them and find the next two closest vertices.
+ - After the two closest vertices are found, a lot of now useless edges can be discarded by throwing away the distance link whose left vertex is one of them.
 
-A drawback is that there will remain edges to throw away, those whose right point was one of the two merged points.
-Our solution is to keep track of the points that were already merged and to discard them when they come up.
+A drawback is that there will remain edges to throw away, those whose right vertex was one of the two merged vertices.
+Our solution is to keep track of the vertices that were already merged and to discard them when they come up.
 
 Our implementation uses =namedtuple=, exported like this:
 #+BEGIN_SRC ipython
@@ -577,7 +577,7 @@ def learn_ktest_union(examples, k):
     <<Initialiase data structures>>
 
     while True:
-        <<Find the closest mergeable points>>
+        <<Find the closest mergeable vertices>>
 
         <<Update merge record>>
 
@@ -587,10 +587,10 @@ def learn_ktest_union(examples, k):
 #+END_SRC
 
 *** Initialising the data structures
-There are three variables whose role is to record the progression of the algorithm :
+There are three variables whose role is to record the progression of the algorithm:
  - =ktest_vectors= contains the initial vectors created from the examples and will be updated with the new merged vectors.
  - =indexes= keeps tracks of all the merges that happened.
- - =already_merged= records whether a vectors was already merged with another.
+ - =already_merged= records whether a vector was already merged with another.
 
 We also construct the initial distance chain and we make sure it is sorted.
 # We chose links rather that array to support our data structures, because they have a better support in python.
@@ -614,14 +614,14 @@ for left in range(0, len(ktest_vectors) - 1):
 distance_chain.sort()
 #+END_SRC
 
-*** Finding the closest mergeable points
-The idea here is to loop until the closest mergeable points are found.
-When the closest points are not mergeable (because the right point was already merged or because they are not union consistent), we throw the edge away and try the next one.
+*** Finding the closest mergeable vertices
+The idea here is to loop until the closest mergeable vertices are found.
+When the closest vertices are not mergeable (because the right vertex was already merged or because they are not union consistent), we throw the edge away and try the next one.
 
 We make sure that the distance chain stays sorted and we remove empty links.
 The exit point of the function is also here, the result is returned when the distance chain has been exhausted.
 
-#+name: Find the closest mergeable points
+#+name: Find the closest mergeable vertices
 #+BEGIN_SRC ipython
 while True:
     if len(distance_chain) == 0:
@@ -641,7 +641,7 @@ while True:
 #+END_SRC
 
 *** Updating the merge record
-As a result of the previous block, =left= and =right= are now the closest mergeable points.
+As a result of the previous block, =left= and =right= are now the closest mergeable vertices.
 We record the structure of the merge into =indexes=, the union into =ktest_vectors=, and the merge into =already_merged=.
 
 #+name: Update merge record
@@ -653,7 +653,7 @@ already_merged[left] = already_merged[right] = True
 #+END_SRC
 
 *** Cleaning up the distance chain
-The cleanup highlights the advantage of the algorithm, the fact that a chunk of the distance chain can be quickly removed by discarding the links whose left point is =left= or =right=.
+The cleanup highlights the advantage of the algorithm, the fact that a chunk of the distance chain can be quickly removed by discarding the links whose left vertex is =left= or =right=.
 
 #+name: Cleanup distance chain
 #+BEGIN_SRC ipython
@@ -751,7 +751,7 @@ We propose here a way to simplify this computation.
 
 There are only two ways to go from a red to a blue component ; via a direct path and via an indirect path.
 We only consider paths from blue to red but the same applies to paths from red to blue.
-A direct path is when an edge exists between a blue and a red node, whereas an indirect path goes from to a blue to a red node, while going through $n$ white nodes, $n \in \mathbb{N}_{> 0}$.
+A direct path is when an edge exists between a blue and a red vertex, whereas an indirect path goes from to a blue to a red vertex, while going through $n$ white vertices, $n \in \mathbb{N}_{> 0}$.
 
 A direct path is easy to detect and occurs when a superposition is possible between a red component and a blue component.
 We define the conditions for superposition to occur in the table [[superpositions]], with $c \in \Sigma$ and $u, v \in \Sigma^{k-1}$.
@@ -839,7 +839,7 @@ def is_union_consistent_with(self, other):
 #+END_SRC
 
 For each color, we compute the infixes, as well as the potential starting and stopping points of paths.
-The potential starting points are the prefixes and the prefixes of infixes and the potential stopping points are the suffixes and the suffixes of infixes.
+The potential starting points are the prefixes and the suffixes of infixes and the potential stopping points are the suffixes and the prefixes of infixes.
 
 #+name: Colored components
 #+BEGIN_SRC ipython
@@ -864,7 +864,7 @@ if blue_start & red_stop or red_start & blue_stop:
 #+END_SRC
 
 If there were no direct paths, the transitive closure function is used to find the de facto blue states and the de facto red states.
-Finally, if no a superposition exists between de facto red states and blue states and vice-versa, this means that there is a no path between those two colors, and therefore that the union is consistent.
+Finally, if no superposition exists between de facto red states and blue states and vice-versa, this means that there is no path between those two colors, and therefore that the union is consistent.
 
 #+name: Indirect paths
 #+BEGIN_SRC ipython
@@ -896,7 +896,7 @@ from collections import namedtuple, defaultdict
 
 ** Measures
 
-While this way to look at the union consistency problem still relies on graph, it has intuitively the advantage of being less expensive to compute since it can identify an early exit condition and when that condition is not met, it compute the transitive only on a small subset of the graph.
+While this way to look at the union consistency problem still relies on graph, it has intuitively the advantage of being less expensive to compute since it can identify an early exit condition and when that condition is not met, it compute the transitive closure only on a small subset of the graph.
 
 We propose to measure experimentally the speedup provided.
 
@@ -932,7 +932,7 @@ We can see that this optimisation is about two orders of magnitude faster than t
 
 *** Union learning
 
-Below is an extract of a line by line profile, obtained with the module =line_profiler=[fn:: See https://pypi.org/project/line_profiler/], on the initial version of =ktestable=.
+Below is an extract of a line by line profile, obtained with the module =line_profiler=[fn:: See https://pypi.org/project/line_profiler/], on the initial version of =ktestable=, while learning the printjob dataset with $k = 3$.
 #+BEGIN_SRC ipython
 #Line# % Time  Line Contents
 #===============================
